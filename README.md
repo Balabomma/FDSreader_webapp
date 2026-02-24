@@ -51,7 +51,7 @@ git --version
 ```
 
 **Windows:**
-1. Download Git from https://git-scm.com/download/win
+1. Download Git from [https://git-scm.com/download/win](https://git-scm.com/install/windows)
 2. Run the installer (keep default options)
 3. Verify installation by opening **Command Prompt** or **Git Bash**:
 ```cmd
@@ -66,7 +66,7 @@ git --version
 
 ```bash
 # Linux / Windows Git Bash / Windows Command Prompt
-git clone https://github.com/balabomma/FDSreader_webapp.git
+git clone [https://github.com/balabomma/FDSreader_webapp.git](https://github.com/Balabomma/FDSreader_webapp.git)
 cd FDSreader_webapp
 ```
 
