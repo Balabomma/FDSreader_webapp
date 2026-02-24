@@ -66,7 +66,7 @@ git --version
 
 ```bash
 # Linux / Windows Git Bash / Windows Command Prompt
-git clone [https://github.com/balabomma/FDSreader_webapp.git](https://github.com/Balabomma/FDSreader_webapp.git)
+git clone https://github.com/balabomma/FDSreader_webapp.git
 cd FDSreader_webapp
 ```
 
