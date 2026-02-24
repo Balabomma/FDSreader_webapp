@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Boundary Viewer{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <!-- ── LEFT SIDEBAR (Controls) ────────────────────────────── -->
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-bricks text-warning me-2"></i>
+          <h6 class="mb-0">Boundary Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+
+          <!-- Obstruction selector -->
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Select Obstruction</label>
+            <select id="obstSelect" class="form-select form-select-sm bg-dark border-secondary" onchange="onObstSelected()">
+              <option value="">-- Select obstruction --</option>
+            </select>
+            <small class="text-secondary">Only obstructions with boundary data are listed.</small>
+          </div>
+
+          <!-- Controls (hidden until selected) -->
+          <div id="bndfInfoPanel" class="d-none">
+            <div class="alert alert-dark border-secondary small p-2 mb-3" id="bndfInfoBox"></div>
+
+            <!-- Quantity -->
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Quantity</label>
+              <select id="bndfQty" class="form-select form-select-sm bg-dark border-secondary"></select>
+            </div>
+
+            <!-- Orientation -->
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Face Orientation</label>
+              <select id="bndfOrient" class="form-select form-select-sm bg-dark border-secondary"></select>
+            </div>
+
+            <!-- View mode -->
+            <div class="mb-3">
+              <label class="form-label small text-secondary">View Mode</label>
+              <select id="bndfViewMode" class="form-select form-select-sm bg-dark border-secondary" onchange="onBndfViewModeChange()">
+                <option value="single">Single Timestep</option>
+                <option value="multi">Multi Timestep</option>
+                <option value="animation">Animation</option>
+                <option value="timeseries">Time-Series (centre)</option>
+              </select>
+            </div>
+
+            <!-- ── SINGLE TIMESTEP ─────────────────────────────── -->
+            <div id="bndfPanelSingle">
+              <div class="mb-3">
+                <label class="form-label small text-secondary">Select Timestep</label>
+                <select id="bndfTsSelect" class="form-select form-select-sm bg-dark border-secondary"></select>
+              </div>
+              <button class="btn btn-warning btn-sm w-100" onclick="renderSingleBoundary()">
+                <i class="bi bi-image"></i> Render
+              </button>
+            </div>
+
+            <!-- ── MULTI TIMESTEP ──────────────────────────────── -->
+            <div id="bndfPanelMulti" class="d-none">
+              <div class="mb-3">
+                <label class="form-label small text-secondary">Select Timesteps (hold Ctrl)</label>
+                <select id="bndfTsMultiSelect" class="form-select form-select-sm bg-dark border-secondary" multiple size="6"></select>
+              </div>
+              <button class="btn btn-info btn-sm w-100" onclick="renderMultiBoundary()">
+                <i class="bi bi-grid-3x2"></i> Render Grid
+              </button>
+            </div>
+
+            <!-- ── ANIMATION ───────────────────────────────────── -->
+            <div id="bndfPanelAnimation" class="d-none">
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small text-secondary">From t (s)</label>
+                  <input type="number" id="bndfAnimTStart" class="form-control form-control-sm bg-dark border-secondary" value="0">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small text-secondary">To t (s)</label>
+                  <input type="number" id="bndfAnimTEnd" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+                </div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small text-secondary">Frames</label>
+                  <input type="number" id="bndfAnimFrames" class="form-control form-control-sm bg-dark border-secondary" value="20" min="5" max="60">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small text-secondary">FPS</label>
+                  <input type="number" id="bndfAnimFPS" class="form-control form-control-sm bg-dark border-secondary" value="5" min="1" max="30">
+                </div>
+              </div>
+              <button class="btn btn-warning btn-sm w-100 mb-2" onclick="generateBndfAnimation()">
+                <i class="bi bi-film"></i> Generate Frames
+              </button>
+              <div id="bndfAnimPlayControls" class="d-none">
+                <div class="d-flex gap-2 mb-2">
+                  <button class="btn btn-outline-light btn-sm flex-fill" onclick="toggleBndfPlayback()">
+                    <i class="bi bi-play-fill" id="bndfBtnPlayIcon"></i> <span id="bndfBtnPlayText">Play</span>
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" onclick="downloadBndfGIF()">
+                    <i class="bi bi-filetype-gif"></i> GIF
+                  </button>
+                </div>
+                <input type="range" class="form-range" id="bndfAnimScrubber" min="0" max="0" value="0" oninput="scrubBndfAnim(this.value)">
+                <div class="text-center small text-secondary" id="bndfAnimTimeLabel">t = 0.0 s</div>
+              </div>
+            </div>
+
+            <!-- ── TIME-SERIES ─────────────────────────────────── -->
+            <div id="bndfPanelTimeseries" class="d-none">
+              <p class="small text-secondary">Plots the centre-pixel value over all timesteps.</p>
+              <button class="btn btn-success btn-sm w-100" onclick="renderBndfTimeseries()">
+                <i class="bi bi-graph-up-arrow"></i> Plot Time-Series
+              </button>
+            </div>
+
+            <hr class="border-secondary my-3">
+
+            <!-- Common controls -->
+            <div class="mb-2">
+              <label class="form-label small text-secondary">Colormap</label>
+              <select id="bndfCmap" class="form-select form-select-sm bg-dark border-secondary">
+                <option selected>hot</option><option>jet</option><option>inferno</option>
+                <option>turbo</option><option>viridis</option><option>plasma</option>
+                <option>coolwarm</option><option>RdBu</option><option>YlOrRd</option>
+              </select>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label small text-secondary">vmin</label>
+                <input type="number" id="bndfVMin" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+              </div>
+              <div class="col-6">
+                <label class="form-label small text-secondary">vmax</label>
+                <input type="number" id="bndfVMax" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+              </div>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="bndfShowColorbar" checked>
+              <label class="form-check-label small" for="bndfShowColorbar">Show Colorbar</label>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()">
+              <i class="bi bi-download"></i> Download Current Frame (PNG)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT DISPLAY AREA ────────────────────────────────── -->
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0" id="displayTitle"><i class="bi bi-bricks"></i> Boundary Viewer</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2" id="displayArea">
+          <div class="placeholder-message" id="placeholderMsg">
+            <i class="bi bi-arrow-left-circle display-4 text-secondary"></i>
+            <p class="text-secondary mt-3">Select an obstruction from the panel on the left, choose quantity and orientation, then click <strong>Render</strong>.</p>
+          </div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Boundary plot">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => fetchObstructionList());
+</script>
+{% endblock %}

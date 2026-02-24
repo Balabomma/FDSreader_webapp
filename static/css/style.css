@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════════════════
+   FDS Viewer — Dark Theme Styles (Bootstrap 5)
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-primary: #0f0f1a;
+  --bg-card: #1a1a2e;
+  --bg-surface: #16213e;
+  --border-color: #334466;
+  --text-primary: #e0e0f0;
+  --text-secondary: #8899aa;
+  --accent-red: #e94560;
+  --accent-blue: #53d8fb;
+  --accent-orange: #f5a623;
+}
+
+/* ── Base ──────────────────────────────────────────────────── */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+code {
+  color: var(--accent-blue);
+  background: rgba(83, 216, 251, 0.08);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+}
+
+/* ── Navbar ────────────────────────────────────────────────── */
+.navbar {
+  background: var(--bg-card) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-family: 'Inter', sans-serif;
+}
+.navbar-brand {
+  font-size: 1.2rem;
+  letter-spacing: 0.02em;
+}
+
+/* ── Main layout ───────────────────────────────────────────── */
+.main-wrapper {
+  padding-top: 70px;
+  min-height: 100vh;
+}
+
+/* ── Cards ─────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+}
+.card-header {
+  background: rgba(22, 33, 62, 0.7) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* ── Form controls (dark) ──────────────────────────────────── */
+.form-control,
+.form-select {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+  font-size: 0.85rem;
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 0.15rem rgba(83, 216, 251, 0.2) !important;
+}
+.form-control::placeholder {
+  color: var(--text-secondary) !important;
+  opacity: 0.7;
+}
+.input-group-text {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* ── Alerts / Info boxes ───────────────────────────────────── */
+.alert-dark {
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn-danger {
+  background-color: var(--accent-red) !important;
+  border-color: var(--accent-red) !important;
+}
+.btn-danger:hover {
+  background-color: #d63350 !important;
+}
+
+/* ── Sidebar sticky ────────────────────────────────────────── */
+.sticky-sidebar {
+  position: sticky;
+  top: 75px;
+}
+
+/* ── Loading overlay ───────────────────────────────────────── */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 15, 26, 0.85);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Plot image ────────────────────────────────────────────── */
+#plotImage {
+  max-width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+/* ── Placeholder message ───────────────────────────────────── */
+.placeholder-message {
+  padding: 80px 20px;
+}
+
+/* ── Timestep multi-select ─────────────────────────────────── */
+select[multiple] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--bg-surface);
+}
+select[multiple] option {
+  padding: 2px 6px;
+  font-size: 0.8rem;
+}
+select[multiple] option:checked {
+  background: var(--accent-blue);
+  color: #000;
+}
+
+/* ── Range slider ──────────────────────────────────────────── */
+.form-range::-webkit-slider-thumb {
+  background: var(--accent-red);
+}
+.form-range::-moz-range-thumb {
+  background: var(--accent-red);
+}
+.form-range::-webkit-slider-runnable-track {
+  background: var(--border-color);
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #556688;
+}
+
+/* ── Feature cards (index page) ────────────────────────────── */
+.feature-card-grid .card:hover {
+  border-color: var(--accent-blue) !important;
+  transform: translateY(-2px);
+  transition: all 0.2s ease;
+}
+
+/* ── Badge colours ─────────────────────────────────────────── */
+.badge.bg-success {
+  background-color: #198754 !important;
+}
+
+/* ── Responsive fixes ──────────────────────────────────────── */
+@media (max-width: 991px) {
+  .sticky-sidebar {
+    position: static;
+  }
+  .main-wrapper {
+    padding-top: 60px;
+  }
+}

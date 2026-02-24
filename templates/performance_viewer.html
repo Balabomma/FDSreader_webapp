@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Performance{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-speedometer2 text-success me-2"></i>
+          <h6 class="mb-0">Performance Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Data Source</label>
+            <select id="perfSource" class="form-select form-select-sm bg-dark border-secondary" onchange="onPerfSourceChange()">
+              <option value="cpu" selected>CPU Timing</option>
+              <option value="steps">Timestep Data</option>
+            </select>
+          </div>
+          <div class="alert alert-dark border-secondary small p-2 mb-3 d-none" id="perfInfoBox"></div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Select Columns</label>
+            <div id="perfCheckboxList" class="border border-secondary rounded p-2 overflow-auto" style="max-height:250px;">
+              <small class="text-secondary">Load a simulation first.</small>
+            </div>
+            <div class="d-flex gap-2 mt-1">
+              <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="perfSelectAll()">Select All</button>
+              <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="perfSelectNone()">Clear</button>
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6"><label class="form-label small text-secondary">From t (s)</label><input type="number" id="perfTStart" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto"></div>
+            <div class="col-6"><label class="form-label small text-secondary">To t (s)</label><input type="number" id="perfTEnd" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto"></div>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="perfShowGrid" checked>
+            <label class="form-check-label small" for="perfShowGrid">Show Grid</label>
+          </div>
+          <button class="btn btn-success btn-sm w-100 mb-2" onclick="renderPerformance()">
+            <i class="bi bi-graph-up"></i> Plot
+          </button>
+          <hr class="border-secondary my-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()"><i class="bi bi-download"></i> Download PNG</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-speedometer2"></i> Performance Dashboard</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2">
+          <div class="placeholder-message" id="placeholderMsg"><i class="bi bi-arrow-left-circle display-4 text-secondary"></i><p class="text-secondary mt-3">Select CPU or Steps data, choose columns, and click <strong>Plot</strong>.</p></div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Performance">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>document.addEventListener('DOMContentLoaded', () => fetchPerfMeta());</script>{% endblock %}

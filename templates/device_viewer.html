@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Device Viewer{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <!-- ── LEFT SIDEBAR (Controls) ────────────────────────────── -->
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-thermometer-half text-info me-2"></i>
+          <h6 class="mb-0">Device Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+
+          <!-- View mode -->
+          <div class="mb-3">
+            <label class="form-label small text-secondary">View Mode</label>
+            <select id="devcViewMode" class="form-select form-select-sm bg-dark border-secondary" onchange="onDevcViewModeChange()">
+              <option value="plot" selected>Plot Selected Devices</option>
+              <option value="compare">Dual-Axis Comparison</option>
+            </select>
+          </div>
+
+          <!-- Quantity filter -->
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Filter by Quantity</label>
+            <select id="devcQtyFilter" class="form-select form-select-sm bg-dark border-secondary" onchange="filterDeviceList()">
+              <option value="">All Quantities</option>
+            </select>
+          </div>
+
+          <!-- Device selector (checkboxes) -->
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Select Devices</label>
+            <div id="devcCheckboxList" class="border border-secondary rounded p-2 overflow-auto" style="max-height:220px;">
+              <small class="text-secondary">Load a simulation first.</small>
+            </div>
+            <div class="d-flex gap-2 mt-1">
+              <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="devcSelectAll()">Select All</button>
+              <button class="btn btn-outline-secondary btn-sm flex-fill" onclick="devcSelectNone()">Clear</button>
+            </div>
+          </div>
+
+          <!-- ── STANDARD PLOT PANEL ──────────────────────────── -->
+          <div id="devcPanelPlot">
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label small text-secondary">From t (s)</label>
+                <input type="number" id="devcTStart" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+              </div>
+              <div class="col-6">
+                <label class="form-label small text-secondary">To t (s)</label>
+                <input type="number" id="devcTEnd" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+              </div>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="devcShowGrid" checked>
+              <label class="form-check-label small" for="devcShowGrid">Show Grid</label>
+            </div>
+            <button class="btn btn-info btn-sm w-100" onclick="renderDevicePlot()">
+              <i class="bi bi-graph-up"></i> Plot Devices
+            </button>
+          </div>
+
+          <!-- ── DUAL-AXIS COMPARISON PANEL ───────────────────── -->
+          <div id="devcPanelCompare" class="d-none">
+            <p class="small text-secondary mb-2">Select devices for the <strong class="text-info">left axis</strong> using the checkboxes above. Then select devices for the <strong class="text-warning">right axis</strong> below.</p>
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Right-Axis Devices</label>
+              <div id="devcRightCheckboxList" class="border border-secondary rounded p-2 overflow-auto" style="max-height:180px;">
+                <small class="text-secondary">Load devices first.</small>
+              </div>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label small text-secondary">From t (s)</label>
+                <input type="number" id="devcCmpTStart" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+              </div>
+              <div class="col-6">
+                <label class="form-label small text-secondary">To t (s)</label>
+                <input type="number" id="devcCmpTEnd" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+              </div>
+            </div>
+            <button class="btn btn-warning btn-sm w-100" onclick="renderDeviceComparison()">
+              <i class="bi bi-bar-chart-line"></i> Compare (Dual Axis)
+            </button>
+          </div>
+
+          <hr class="border-secondary my-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()">
+            <i class="bi bi-download"></i> Download Current Plot (PNG)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT DISPLAY AREA ────────────────────────────────── -->
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0" id="displayTitle"><i class="bi bi-thermometer-half"></i> Device Viewer</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2" id="displayArea">
+          <div class="placeholder-message" id="placeholderMsg">
+            <i class="bi bi-arrow-left-circle display-4 text-secondary"></i>
+            <p class="text-secondary mt-3">Select one or more devices from the panel on the left, then click <strong>Plot Devices</strong>.</p>
+          </div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Device plot">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => fetchDeviceList());
+</script>
+{% endblock %}

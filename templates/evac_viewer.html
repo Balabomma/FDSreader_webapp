@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Evacuation Viewer{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-person-walking text-warning me-2"></i>
+          <h6 class="mb-0">Evacuation Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+          <div class="alert alert-dark border-secondary small p-2 mb-3 d-none" id="evacInfoBox"></div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">View Mode</label>
+            <select id="evacViewMode" class="form-select form-select-sm bg-dark border-secondary" onchange="onEvacViewModeChange()">
+              <option value="floorplan" selected>Floor Plan (2D Scatter)</option>
+              <option value="timeseries">Time-Series</option>
+            </select>
+          </div>
+          <!-- Floor Plan Panel -->
+          <div id="evacPanelFloorplan">
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Timestep Index</label>
+              <input type="number" id="evacTimeIdx" class="form-control form-control-sm bg-dark border-secondary" value="0" min="0">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Filter by Class</label>
+              <select id="evacClassFilter" class="form-select form-select-sm bg-dark border-secondary">
+                <option value="">All Classes</option>
+              </select>
+            </div>
+            <button class="btn btn-warning btn-sm w-100" onclick="renderEvacFloorplan()">
+              <i class="bi bi-geo-alt"></i> Plot Floor Plan
+            </button>
+          </div>
+          <!-- Time-Series Panel -->
+          <div id="evacPanelTimeseries" class="d-none">
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Metric</label>
+              <select id="evacMetric" class="form-select form-select-sm bg-dark border-secondary">
+                <option value="agents" selected>Agent Count</option>
+                <option value="deaths">Fatalities</option>
+                <option value="fed">FED (Fractional Effective Dose)</option>
+                <option value="exits">Exit Counters</option>
+              </select>
+            </div>
+            <button class="btn btn-warning btn-sm w-100" onclick="renderEvacTimeseries()">
+              <i class="bi bi-graph-up"></i> Plot Time-Series
+            </button>
+          </div>
+          <hr class="border-secondary my-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()"><i class="bi bi-download"></i> Download PNG</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-person-walking"></i> Evacuation Viewer</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2">
+          <div class="placeholder-message" id="placeholderMsg"><i class="bi bi-arrow-left-circle display-4 text-secondary"></i><p class="text-secondary mt-3">Choose a view mode and click the plot button to visualize evacuation data.</p></div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Evacuation">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>document.addEventListener('DOMContentLoaded', () => fetchEvacMeta());</script>{% endblock %}

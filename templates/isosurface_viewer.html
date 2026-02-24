@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Isosurface Viewer{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-diamond-half text-success me-2"></i>
+          <h6 class="mb-0">Isosurface Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Isosurface</label>
+            <select id="isoSelect" class="form-select form-select-sm bg-dark border-secondary" onchange="onIsoSelected()">
+              <option value="">-- Select isosurface --</option>
+            </select>
+          </div>
+          <div class="alert alert-dark border-secondary small p-2 mb-3 d-none" id="isoInfoBox"></div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Timestep Index</label>
+            <input type="number" id="isoTimeIdx" class="form-control form-control-sm bg-dark border-secondary" value="0" min="0">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Projection Plane</label>
+            <select id="isoPlane" class="form-select form-select-sm bg-dark border-secondary">
+              <option value="xy" selected>XY (top view)</option>
+              <option value="xz">XZ (side view)</option>
+              <option value="yz">YZ (side view)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Colormap</label>
+            <select id="isoCmap" class="form-select form-select-sm bg-dark border-secondary">
+              <option>hot</option><option>jet</option><option>viridis</option><option>plasma</option><option>turbo</option>
+            </select>
+          </div>
+          <button class="btn btn-success btn-sm w-100 mb-2" onclick="renderIsosurface()">
+            <i class="bi bi-diamond-half"></i> Render Projection
+          </button>
+          <hr class="border-secondary my-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()"><i class="bi bi-download"></i> Download PNG</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-diamond-half"></i> Isosurface 2D Projection</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2">
+          <div class="placeholder-message" id="placeholderMsg"><i class="bi bi-arrow-left-circle display-4 text-secondary"></i><p class="text-secondary mt-3">Select an isosurface dataset and click <strong>Render Projection</strong>.</p></div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Isosurface">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>document.addEventListener('DOMContentLoaded', () => fetchIsosurfaceList());</script>{% endblock %}

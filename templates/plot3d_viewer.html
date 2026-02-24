@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Plot3D Viewer{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-grid-3x3-gap text-info me-2"></i>
+          <h6 class="mb-0">Plot3D Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Plot3D Dataset</label>
+            <select id="p3dSelect" class="form-select form-select-sm bg-dark border-secondary" onchange="onP3dSelected()">
+              <option value="">-- Select dataset --</option>
+            </select>
+          </div>
+          <div class="alert alert-dark border-secondary small p-2 mb-3 d-none" id="p3dInfoBox"></div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Quantity</label>
+            <select id="p3dQty" class="form-select form-select-sm bg-dark border-secondary"></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Timestep</label>
+            <select id="p3dTime" class="form-select form-select-sm bg-dark border-secondary"></select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Cut-Plane Axis</label>
+            <select id="p3dAxis" class="form-select form-select-sm bg-dark border-secondary">
+              <option value="z" selected>Z (horizontal)</option>
+              <option value="y">Y (front-back)</option>
+              <option value="x">X (left-right)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Position (m) <small class="text-muted">(blank = midpoint)</small></label>
+            <input type="number" id="p3dPos" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto" step="0.1">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Colormap</label>
+            <select id="p3dCmap" class="form-select form-select-sm bg-dark border-secondary">
+              <option>jet</option><option>hot</option><option>inferno</option><option>viridis</option><option>turbo</option><option>plasma</option><option>coolwarm</option>
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6"><label class="form-label small text-secondary">vmin</label><input type="number" id="p3dVMin" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto" step="any"></div>
+            <div class="col-6"><label class="form-label small text-secondary">vmax</label><input type="number" id="p3dVMax" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto" step="any"></div>
+          </div>
+          <button class="btn btn-info btn-sm w-100 mb-2" onclick="renderPlot3D()">
+            <i class="bi bi-image"></i> Render Cut-Plane
+          </button>
+          <hr class="border-secondary my-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()">
+            <i class="bi bi-download"></i> Download PNG
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-grid-3x3-gap"></i> Plot3D Cut-Plane Viewer</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2">
+          <div class="placeholder-message" id="placeholderMsg"><i class="bi bi-arrow-left-circle display-4 text-secondary"></i><p class="text-secondary mt-3">Select a Plot3D dataset, choose quantity and axis, then click <strong>Render Cut-Plane</strong>.</p></div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Plot3D">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>document.addEventListener('DOMContentLoaded', () => fetchPlot3DList());</script>{% endblock %}

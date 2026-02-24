@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Smoke3D Viewer{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-cloud-haze2 text-warning me-2"></i>
+          <h6 class="mb-0">Smoke3D Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Smoke3D Dataset</label>
+            <select id="s3dSelect" class="form-select form-select-sm bg-dark border-secondary" onchange="onS3dSelected()">
+              <option value="">-- Select dataset --</option>
+            </select>
+          </div>
+          <div class="alert alert-dark border-secondary small p-2 mb-3 d-none" id="s3dInfoBox"></div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Timestep Index</label>
+            <input type="number" id="s3dTimeIdx" class="form-control form-control-sm bg-dark border-secondary" value="0" min="0">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Cut-Plane Axis</label>
+            <select id="s3dAxis" class="form-select form-select-sm bg-dark border-secondary">
+              <option value="z" selected>Z (horizontal)</option>
+              <option value="y">Y (front-back)</option>
+              <option value="x">X (left-right)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Position (m)</label>
+            <input type="number" id="s3dPos" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto" step="0.1">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Colormap</label>
+            <select id="s3dCmap" class="form-select form-select-sm bg-dark border-secondary">
+              <option>hot</option><option>inferno</option><option>magma</option><option>jet</option><option>viridis</option><option>plasma</option>
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6"><label class="form-label small text-secondary">vmin</label><input type="number" id="s3dVMin" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto" step="any"></div>
+            <div class="col-6"><label class="form-label small text-secondary">vmax</label><input type="number" id="s3dVMax" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto" step="any"></div>
+          </div>
+          <button class="btn btn-warning btn-sm w-100 mb-2" onclick="renderSmoke3D()">
+            <i class="bi bi-image"></i> Render Cut-Plane
+          </button>
+          <hr class="border-secondary my-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()"><i class="bi bi-download"></i> Download PNG</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-cloud-haze2"></i> Smoke3D Cut-Plane Viewer</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2">
+          <div class="placeholder-message" id="placeholderMsg"><i class="bi bi-arrow-left-circle display-4 text-secondary"></i><p class="text-secondary mt-3">Select a Smoke3D dataset and click <strong>Render Cut-Plane</strong>.</p></div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Smoke3D">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>document.addEventListener('DOMContentLoaded', () => fetchSmoke3DList());</script>{% endblock %}

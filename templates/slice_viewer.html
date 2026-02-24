@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Slice Viewer{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <!-- ── LEFT SIDEBAR (Controls) ────────────────────────────── -->
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-layers text-info me-2"></i>
+          <h6 class="mb-0">Slice Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+
+          <!-- Slice selector -->
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Select Slice</label>
+            <select id="sliceSelect" class="form-select form-select-sm bg-dark border-secondary" onchange="onSliceSelected()">
+              <option value="">-- Select a slice --</option>
+            </select>
+          </div>
+
+          <!-- Slice info (hidden until selected) -->
+          <div id="sliceInfoPanel" class="d-none">
+            <div class="alert alert-dark border-secondary small p-2 mb-3" id="sliceInfoBox"></div>
+
+            <!-- Data mode toggle -->
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Data Mode</label>
+              <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="sliceMode" id="modeGlobal" value="global" checked onchange="onModeChange()">
+                <label class="btn btn-outline-info btn-sm" for="modeGlobal">Global (merged)</label>
+                <input type="radio" class="btn-check" name="sliceMode" id="modeMesh" value="mesh" onchange="onModeChange()">
+                <label class="btn btn-outline-info btn-sm" for="modeMesh">Single Mesh</label>
+              </div>
+            </div>
+            <div id="meshSelectGroup" class="mb-3 d-none">
+              <label class="form-label small text-secondary">Mesh</label>
+              <select id="meshSelect" class="form-select form-select-sm bg-dark border-secondary"></select>
+            </div>
+
+            <!-- View mode -->
+            <div class="mb-3">
+              <label class="form-label small text-secondary">View Mode</label>
+              <select id="viewMode" class="form-select form-select-sm bg-dark border-secondary" onchange="onViewModeChange()">
+                <option value="single">Single Timestep</option>
+                <option value="multi">Multi Timestep</option>
+                <option value="animation">Animation</option>
+                <option value="profile">Line Profile</option>
+                <option value="timeseries">Point Time-Series</option>
+              </select>
+            </div>
+
+            <!-- ── SINGLE TIMESTEP ─────────────────────────────── -->
+            <div id="panelSingle">
+              <div class="mb-3">
+                <label class="form-label small text-secondary">Select Timestep</label>
+                <select id="tsSelect" class="form-select form-select-sm bg-dark border-secondary"></select>
+              </div>
+              <button class="btn btn-danger btn-sm w-100" onclick="renderSingleSlice()">
+                <i class="bi bi-image"></i> Render
+              </button>
+            </div>
+
+            <!-- ── MULTI TIMESTEP ──────────────────────────────── -->
+            <div id="panelMulti" class="d-none">
+              <div class="mb-3">
+                <label class="form-label small text-secondary">Select Timesteps (hold Ctrl)</label>
+                <select id="tsMultiSelect" class="form-select form-select-sm bg-dark border-secondary" multiple size="6"></select>
+              </div>
+              <button class="btn btn-info btn-sm w-100" onclick="renderMultiSlice()">
+                <i class="bi bi-grid-3x2"></i> Render Grid
+              </button>
+            </div>
+
+            <!-- ── ANIMATION ───────────────────────────────────── -->
+            <div id="panelAnimation" class="d-none">
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small text-secondary">From t (s)</label>
+                  <input type="number" id="animTStart" class="form-control form-control-sm bg-dark border-secondary" value="0">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small text-secondary">To t (s)</label>
+                  <input type="number" id="animTEnd" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+                </div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small text-secondary">Frames</label>
+                  <input type="number" id="animFrames" class="form-control form-control-sm bg-dark border-secondary" value="20" min="5" max="60">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small text-secondary">FPS</label>
+                  <input type="number" id="animFPS" class="form-control form-control-sm bg-dark border-secondary" value="5" min="1" max="30">
+                </div>
+              </div>
+              <button class="btn btn-warning btn-sm w-100 mb-2" onclick="generateSliceAnimation()">
+                <i class="bi bi-film"></i> Generate Frames
+              </button>
+              <div id="animPlayControls" class="d-none">
+                <div class="d-flex gap-2 mb-2">
+                  <button class="btn btn-outline-light btn-sm flex-fill" onclick="toggleSlicePlayback()">
+                    <i class="bi bi-play-fill" id="btnPlayIcon"></i> <span id="btnPlayText">Play</span>
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" onclick="downloadSliceGIF()">
+                    <i class="bi bi-filetype-gif"></i> GIF
+                  </button>
+                </div>
+                <input type="range" class="form-range" id="animScrubber" min="0" max="0" value="0" oninput="scrubSliceAnim(this.value)">
+                <div class="text-center small text-secondary" id="animTimeLabel">t = 0.0 s</div>
+              </div>
+            </div>
+
+            <!-- ── PROFILE ─────────────────────────────────────── -->
+            <div id="panelProfile" class="d-none">
+              <div class="mb-2">
+                <label class="form-label small text-secondary">Direction</label>
+                <select id="profileDir" class="form-select form-select-sm bg-dark border-secondary"></select>
+              </div>
+              <div class="mb-2">
+                <label class="form-label small text-secondary">Position (m)</label>
+                <input type="number" id="profilePos" class="form-control form-control-sm bg-dark border-secondary" step="0.1" value="0">
+              </div>
+              <div class="mb-2">
+                <label class="form-label small text-secondary">Time (s)</label>
+                <input type="number" id="profileTime" class="form-control form-control-sm bg-dark border-secondary" value="100">
+              </div>
+              <button class="btn btn-success btn-sm w-100" onclick="renderSliceProfile()">
+                <i class="bi bi-graph-up"></i> Plot Profile
+              </button>
+            </div>
+
+            <!-- ── TIME-SERIES ─────────────────────────────────── -->
+            <div id="panelTimeseries" class="d-none">
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small text-secondary" id="tsCoord0Label">Coord 0</label>
+                  <input type="number" id="tsCoord0" class="form-control form-control-sm bg-dark border-secondary" step="0.1">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small text-secondary" id="tsCoord1Label">Coord 1</label>
+                  <input type="number" id="tsCoord1" class="form-control form-control-sm bg-dark border-secondary" step="0.1">
+                </div>
+              </div>
+              <button class="btn btn-success btn-sm w-100" onclick="renderSliceTimeseries()">
+                <i class="bi bi-graph-up-arrow"></i> Point Time-Series
+              </button>
+            </div>
+
+            <hr class="border-secondary my-3">
+
+            <!-- Common controls (always visible) -->
+            <div class="mb-2">
+              <label class="form-label small text-secondary">Colormap</label>
+              <select id="sliceCmap" class="form-select form-select-sm bg-dark border-secondary">
+                <option>jet</option><option>viridis</option><option>inferno</option>
+                <option>plasma</option><option>turbo</option><option>hot</option>
+                <option>coolwarm</option><option>RdBu</option><option>RdYlBu_r</option>
+              </select>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label small text-secondary">vmin</label>
+                <input type="number" id="sliceVMin" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+              </div>
+              <div class="col-6">
+                <label class="form-label small text-secondary">vmax</label>
+                <input type="number" id="sliceVMax" class="form-control form-control-sm bg-dark border-secondary" placeholder="auto">
+              </div>
+            </div>
+            <div class="form-check mb-1">
+              <input class="form-check-input" type="checkbox" id="showColorbar" checked>
+              <label class="form-check-label small" for="showColorbar">Show Colorbar</label>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="showLabels" checked>
+              <label class="form-check-label small" for="showLabels">Show Axis Labels</label>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()">
+              <i class="bi bi-download"></i> Download Current Frame (PNG)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT DISPLAY AREA ────────────────────────────────── -->
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0" id="displayTitle"><i class="bi bi-layers"></i> Slice Viewer</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2" id="displayArea">
+          <div class="placeholder-message" id="placeholderMsg">
+            <i class="bi bi-arrow-left-circle display-4 text-secondary"></i>
+            <p class="text-secondary mt-3">Select a slice from the panel on the left, choose a view mode, then click <strong>Render</strong>.</p>
+          </div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Slice plot">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-fetch slices on page load if sim is cached
+  document.addEventListener('DOMContentLoaded', () => fetchSliceList());
+</script>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}FDSReader Webapp — Particle Viewer{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="row g-3">
+    <div class="col-lg-3">
+      <div class="card bg-dark border-secondary sticky-sidebar">
+        <div class="card-header bg-dark border-secondary d-flex align-items-center">
+          <i class="bi bi-droplet-half text-primary me-2"></i>
+          <h6 class="mb-0">Particle Controls</h6>
+        </div>
+        <div class="card-body overflow-auto" style="max-height:calc(100vh - 130px)">
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Particle Class</label>
+            <select id="partClass" class="form-select form-select-sm bg-dark border-secondary" onchange="onPartClassSelected()">
+              <option value="">-- Select class --</option>
+            </select>
+          </div>
+          <div class="alert alert-dark border-secondary small p-2 mb-3 d-none" id="partInfoBox"></div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">View Mode</label>
+            <select id="partViewMode" class="form-select form-select-sm bg-dark border-secondary" onchange="onPartViewModeChange()">
+              <option value="scatter" selected>2D Scatter</option>
+              <option value="histogram">Histogram</option>
+            </select>
+          </div>
+          <!-- Scatter Panel -->
+          <div id="partPanelScatter">
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Timestep Index</label>
+              <input type="number" id="partTimeIdx" class="form-control form-control-sm bg-dark border-secondary" value="0" min="0">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Projection Plane</label>
+              <select id="partPlane" class="form-select form-select-sm bg-dark border-secondary">
+                <option value="xy" selected>XY (top view)</option>
+                <option value="xz">XZ (side view)</option>
+                <option value="yz">YZ (side view)</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Color by Quantity <small>(optional)</small></label>
+              <select id="partColorQty" class="form-select form-select-sm bg-dark border-secondary">
+                <option value="">None (uniform)</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Colormap</label>
+              <select id="partCmap" class="form-select form-select-sm bg-dark border-secondary">
+                <option>jet</option><option>hot</option><option>viridis</option><option>plasma</option><option>turbo</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-sm w-100" onclick="renderParticleScatter()">
+              <i class="bi bi-scatter-chart"></i> Plot Scatter
+            </button>
+          </div>
+          <!-- Histogram Panel -->
+          <div id="partPanelHistogram" class="d-none">
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Quantity</label>
+              <select id="partHistQty" class="form-select form-select-sm bg-dark border-secondary"></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Timestep Index</label>
+              <input type="number" id="partHistTimeIdx" class="form-control form-control-sm bg-dark border-secondary" value="0" min="0">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-secondary">Bins</label>
+              <input type="number" id="partHistBins" class="form-control form-control-sm bg-dark border-secondary" value="50" min="5" max="200">
+            </div>
+            <button class="btn btn-primary btn-sm w-100" onclick="renderParticleHistogram()">
+              <i class="bi bi-bar-chart"></i> Plot Histogram
+            </button>
+          </div>
+          <hr class="border-secondary my-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadCurrentImage()"><i class="bi bi-download"></i> Download PNG</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-9">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-droplet-half"></i> Particle Viewer</h6>
+          <span class="badge bg-secondary" id="displayBadge">No plot</span>
+        </div>
+        <div class="card-body text-center p-2">
+          <div class="placeholder-message" id="placeholderMsg"><i class="bi bi-arrow-left-circle display-4 text-secondary"></i><p class="text-secondary mt-3">Select a particle class and choose scatter or histogram view.</p></div>
+          <img id="plotImage" class="img-fluid d-none" src="" alt="Particle">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>document.addEventListener('DOMContentLoaded', () => fetchParticleList());</script>{% endblock %}
