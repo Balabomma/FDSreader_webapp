@@ -235,4 +235,16 @@ This application implements all core capabilities demonstrated in the [fdsreader
 
 - Python 3.8+
 - FDS simulation output data (completed simulation directory)
+## Acknowledgments
+
+This web application is built on top of the [`fdsreader`](https://github.com/FireDynamics/fdsreader) Python module for reading and processing FDS (Fire Dynamics Simulator) output data. We gratefully acknowledge the authors and maintainers of `fdsreader`:
+
+- **Jan Vogelsang** — [j.vogelsang@fz-juelich.de](mailto:j.vogelsang@fz-juelich.de)
+- **Prof. Dr. Lukas Arnold** — [l.arnold@fz-juelich.de](mailto:l.arnold@fz-juelich.de)
+
+*Forschungszentrum Jülich GmbH*
+
+For more information about `fdsreader`, see:
+- GitHub: [https://github.com/FireDynamics/fdsreader](https://github.com/FireDynamics/fdsreader)
+- Tutorial: [https://firedynamics.github.io/LectureFireSimulation/content/tools/03_analysis/02_fdsreader.html](https://firedynamics.github.io/LectureFireSimulation/content/tools/03_analysis/02_fdsreader.html)
 
