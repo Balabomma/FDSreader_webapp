@@ -52,6 +52,52 @@ def _apply_dark_style() -> None:
         "font.size": 11,
     })
 
+def _apply_uniform_axes(ax, ext: list, xdir: str, ydir: str) -> None:
+    """Force axes to real-world physical extents (metres) so all plots are uniform."""
+    if ext and len(ext) >= 4:
+        ax.set_xlim(ext[0], ext[1])
+        ax.set_ylim(ext[2], ext[3])
+
+    # Equal aspect: 1 metre in x == 1 metre in y visually
+    ax.set_aspect('equal', adjustable='box')
+
+    ax.set_xlabel(f'{xdir} (m)', fontsize=11)
+    ax.set_ylabel(f'{ydir} (m)', fontsize=11)
+
+    # Consistent tick formatting across all axes
+    ax.tick_params(labelsize=9)
+    ax.xaxis.set_major_formatter(plt.FormatStrFormatter('%.1f'))
+    ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.1f'))
+
+
+def _resolve_extent_and_dirs(ext_full: list, xdir: str, ydir: str) -> list:
+    """
+    Given the full extent list and two axis direction labels (e.g. 'x', 'z'),
+    extract the correct [min, max, min, max] for the 2D plot.
+
+    fdsreader extent format: [x_min, x_max, y_min, y_max, z_min, z_max]
+    Plane XY (normal Z): ext2d = [x_min, x_max, y_min, y_max]
+    Plane XZ (normal Y): ext2d = [x_min, x_max, z_min, z_max]
+    Plane YZ (normal X): ext2d = [y_min, y_max, z_min, z_max]
+    """
+    axis_map = {'x': (0, 1), 'y': (2, 3), 'z': (4, 5)}
+    if ext_full and len(ext_full) >= 6:
+        d1 = xdir.lower()
+        d2 = ydir.lower()
+        i0, i1 = axis_map.get(d1, (0, 1))
+        i2, i3 = axis_map.get(d2, (4, 5))
+        return [ext_full[i0], ext_full[i1], ext_full[i2], ext_full[i3]]
+    # Fallback: return ext as-is if already 4-element
+    return ext_full if ext_full and len(ext_full) == 4 else []
+
+
+# Orientation → axis directions for boundary plots
+_ORIENT_DIRS = {
+    1: ('y', 'z'), -1: ('y', 'z'),
+    2: ('x', 'z'), -2: ('x', 'z'),
+    3: ('x', 'y'), -3: ('x', 'y'),
+}
+
 
 # ── figure → base64 ────────────────────────────────────────────────────────
 def fig_to_base64(fig: plt.Figure, dpi: int = 120) -> str:
@@ -385,10 +431,11 @@ def render_slice(
     t_actual = float(slc.times[it])
 
     pd, ext, xdir, ydir = _slice_frame(slc, it, use_global, mesh_index)
+    ext2d = _resolve_extent_and_dirs(ext, xdir, ydir)
     pd = pd.T  # imshow expects (rows=y, cols=x)
 
     fig, ax = plt.subplots(figsize=(10, 7))
-    kw: dict[str, Any] = dict(origin="lower", extent=ext, cmap=cmap, aspect="auto")
+    kw: dict[str, Any] = dict(origin="lower", extent=ext2d, cmap=cmap, aspect="equal")
     if vmin is not None:
         kw["vmin"] = vmin
     if vmax is not None:
@@ -403,9 +450,7 @@ def render_slice(
         cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
         cb.set_label(f"{q} / {u}", color="#d0d0e0")
         cb.ax.tick_params(colors="#8899aa")
-    if show_labels:
-        ax.set_xlabel(f"{xdir} (m)")
-        ax.set_ylabel(f"{ydir} (m)")
+    _apply_uniform_axes(ax, ext2d, xdir, ydir)
     ax.set_title(f"{q} [{mode}] | t = {t_actual:.1f} s", fontsize=14, color="#e94560")
 
     return {"image_b64": fig_to_base64(fig), "actual_time": t_actual}
@@ -438,24 +483,23 @@ def render_slice_multi(
     for tv in timesteps_s:
         it = slc.get_nearest_timestep(tv)
         pd, ext, xdir, ydir = _slice_frame(slc, it, use_global, mesh_index)
+        ext2d = _resolve_extent_and_dirs(ext, xdir, ydir)
         pd = pd.T
-        frames_data.append((pd, ext, xdir, ydir, it))
+        frames_data.append((pd, ext2d, xdir, ydir, it))
 
     g_vmin = vmin if vmin is not None else float(min(np.nanmin(fd[0]) for fd in frames_data))
     g_vmax = vmax if vmax is not None else float(max(np.nanmax(fd[0]) for fd in frames_data))
 
     im = None
-    for i, (pd, ext, xdir, ydir, it) in enumerate(frames_data):
+    for i, (pd, ext2d, xdir, ydir, it) in enumerate(frames_data):
         r, c = divmod(i, cols)
         ax = axs[r][c]
-        kw: dict[str, Any] = dict(origin="lower", extent=ext, cmap=cmap, aspect="auto",
+        kw: dict[str, Any] = dict(origin="lower", extent=ext2d, cmap=cmap, aspect="equal",
                                   vmin=g_vmin, vmax=g_vmax)
         im = ax.imshow(pd, **kw)
         ax.set_title(f"t = {slc.times[it]:.1f} s", fontsize=11, color="#53d8fb",
                      pad=10)
-        ax.set_xlabel(f"{xdir} (m)", fontsize=9, labelpad=8)
-        ax.set_ylabel(f"{ydir} (m)", fontsize=9, labelpad=8)
-        ax.tick_params(labelsize=8, pad=4)
+        _apply_uniform_axes(ax, ext2d, xdir, ydir)
 
     # hide unused axes
     for i in range(n, rows * cols):
@@ -499,9 +543,10 @@ def render_slice_animation_frames(
     for t in np.linspace(t_start, t_end, n_frames):
         it = slc.get_nearest_timestep(float(t))
         pd, ext, xdir, ydir = _slice_frame(slc, it, use_global, mesh_index)
+        ext2d = _resolve_extent_and_dirs(ext, xdir, ydir)
         pd = pd.T
         fig, ax = plt.subplots(figsize=(10, 7))
-        kw: dict[str, Any] = dict(origin="lower", extent=ext, cmap=cmap, aspect="auto")
+        kw: dict[str, Any] = dict(origin="lower", extent=ext2d, cmap=cmap, aspect="equal")
         if vmin is not None:
             kw["vmin"] = vmin
         if vmax is not None:
@@ -512,8 +557,7 @@ def render_slice_animation_frames(
         cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
         cb.set_label(f"{q} / {u}", color="#d0d0e0")
         cb.ax.tick_params(colors="#8899aa")
-        ax.set_xlabel(f"{xdir} (m)")
-        ax.set_ylabel(f"{ydir} (m)")
+        _apply_uniform_axes(ax, ext2d, xdir, ydir)
         ax.set_title(f"{q} | t = {slc.times[it]:.1f} s", fontsize=14, color="#e94560")
         frames.append({"time": float(slc.times[it]), "image_b64": fig_to_base64(fig, 90)})
     return frames
@@ -699,20 +743,26 @@ def render_boundary(
     it = obst.get_nearest_timestep(timestep_s)
     arr = _get_bndf_arr(obst, quantity, orientation)
 
+    bbox_full = obst.bounding_box.as_list() if hasattr(obst, "bounding_box") and hasattr(obst.bounding_box, "as_list") else []
+    xdir, ydir = _ORIENT_DIRS.get(orientation, ('y', 'z'))
+    ext2d = _resolve_extent_and_dirs(bbox_full, xdir, ydir)
+
     fig, ax = plt.subplots(figsize=(10, 7))
-    kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="auto")
-    if hasattr(obst, "bounding_box"):
-        kw["extent"] = obst.bounding_box.as_list()
+    kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="equal", extent=ext2d if ext2d else None)
     if vmin is not None:
         kw["vmin"] = vmin
     if vmax is not None:
         kw["vmax"] = vmax
+    # Remove None extent
+    if kw.get("extent") is None:
+        kw.pop("extent", None)
 
     im = ax.imshow(arr[it].T, **kw)
     if show_colorbar:
         cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
         cb.set_label(quantity, color="#d0d0e0")
         cb.ax.tick_params(colors="#8899aa")
+    _apply_uniform_axes(ax, ext2d, xdir, ydir)
     ax.set_title(f"BNDF: {quantity} | {_orient_label(orientation)} | t = {obst.times[it]:.1f} s",
                  fontsize=14, color="#e94560")
     return {"image_b64": fig_to_base64(fig, 120), "actual_time": float(obst.times[it])}
@@ -739,6 +789,10 @@ def render_boundary_multi(
                             squeeze=False,
                             gridspec_kw={"hspace": 0.50, "wspace": 0.40})
 
+    bbox_full = obst.bounding_box.as_list() if hasattr(obst, "bounding_box") and hasattr(obst.bounding_box, "as_list") else []
+    xdir, ydir = _ORIENT_DIRS.get(orientation, ('y', 'z'))
+    ext2d = _resolve_extent_and_dirs(bbox_full, xdir, ydir)
+
     # Pre-compute timestep indices and derive global colour limits
     frame_indices: list[int] = []
     for tv in timesteps_s:
@@ -751,14 +805,14 @@ def render_boundary_multi(
     for i, it in enumerate(frame_indices):
         r, c = divmod(i, cols)
         ax = axs[r][c]
-        kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="auto",
+        kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="equal",
                                   vmin=g_vmin, vmax=g_vmax)
-        if hasattr(obst, "bounding_box"):
-            kw["extent"] = obst.bounding_box.as_list()
+        if ext2d:
+            kw["extent"] = ext2d
         im = ax.imshow(arr[it].T, **kw)
         ax.set_title(f"t = {obst.times[it]:.1f} s", fontsize=11, color="#53d8fb",
                      pad=10)
-        ax.tick_params(labelsize=8, pad=4)
+        _apply_uniform_axes(ax, ext2d, xdir, ydir)
 
     for i in range(n, rows * cols):
         r, c = divmod(i, cols)
@@ -796,14 +850,18 @@ def render_boundary_animation_frames(
     if t_end is None:
         t_end = float(obst.times[-1])
     n_frames = min(n_frames, 60)
-    frames: list[dict] = []
 
+    bbox_full = obst.bounding_box.as_list() if hasattr(obst, "bounding_box") and hasattr(obst.bounding_box, "as_list") else []
+    xdir, ydir = _ORIENT_DIRS.get(orientation, ('y', 'z'))
+    ext2d = _resolve_extent_and_dirs(bbox_full, xdir, ydir)
+
+    frames: list[dict] = []
     for t in np.linspace(t_start, t_end, n_frames):
         it = obst.get_nearest_timestep(float(t))
         fig, ax = plt.subplots(figsize=(10, 7))
-        kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="auto")
-        if hasattr(obst, "bounding_box"):
-            kw["extent"] = obst.bounding_box.as_list()
+        kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="equal")
+        if ext2d:
+            kw["extent"] = ext2d
         if vmin is not None:
             kw["vmin"] = vmin
         if vmax is not None:
@@ -812,6 +870,7 @@ def render_boundary_animation_frames(
         cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
         cb.set_label(quantity, color="#d0d0e0")
         cb.ax.tick_params(colors="#8899aa")
+        _apply_uniform_axes(ax, ext2d, xdir, ydir)
         ax.set_title(f"BNDF: {quantity} | {_orient_label(orientation)} | t = {obst.times[it]:.1f} s",
                      fontsize=14, color="#e94560")
         frames.append({"time": float(obst.times[it]), "image_b64": fig_to_base64(fig, 90)})
@@ -879,9 +938,10 @@ def export_slice_gif(
     for t in np.linspace(t_start, t_end, n_frames):
         it = slc.get_nearest_timestep(float(t))
         pd, ext, xdir, ydir = _slice_frame(slc, it, use_global, mesh_index)
+        ext2d = _resolve_extent_and_dirs(ext, xdir, ydir)
         pd = pd.T
         fig, ax = plt.subplots(figsize=(10, 7))
-        kw: dict = dict(origin="lower", extent=ext, cmap=cmap, aspect="auto")
+        kw: dict = dict(origin="lower", extent=ext2d, cmap=cmap, aspect="equal")
         if vmin is not None:
             kw["vmin"] = vmin
         if vmax is not None:
@@ -892,8 +952,7 @@ def export_slice_gif(
         cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
         cb.set_label(f"{q} / {u}", color="#d0d0e0")
         cb.ax.tick_params(colors="#8899aa")
-        ax.set_xlabel(f"{xdir} (m)")
-        ax.set_ylabel(f"{ydir} (m)")
+        _apply_uniform_axes(ax, ext2d, xdir, ydir)
         ax.set_title(f"{q} | t = {slc.times[it]:.1f} s", fontsize=14, color="#e94560")
         buf = _fig_to_raw_bytes(fig, 120)
         pil_frames.append(Image.open(buf).convert("RGB"))
@@ -926,13 +985,17 @@ def export_boundary_gif(
         t_end = float(obst.times[-1])
     n_frames = min(n_frames, 60)
 
+    bbox_full = obst.bounding_box.as_list() if hasattr(obst, "bounding_box") and hasattr(obst.bounding_box, "as_list") else []
+    xdir, ydir = _ORIENT_DIRS.get(orientation, ('y', 'z'))
+    ext2d = _resolve_extent_and_dirs(bbox_full, xdir, ydir)
+
     pil_frames = []
     for t in np.linspace(t_start, t_end, n_frames):
         it = obst.get_nearest_timestep(float(t))
         fig, ax = plt.subplots(figsize=(10, 7))
-        kw: dict = dict(origin="lower", cmap=cmap, aspect="auto")
-        if hasattr(obst, "bounding_box"):
-            kw["extent"] = obst.bounding_box.as_list()
+        kw: dict = dict(origin="lower", cmap=cmap, aspect="equal")
+        if ext2d:
+            kw["extent"] = ext2d
         if vmin is not None:
             kw["vmin"] = vmin
         if vmax is not None:
@@ -941,6 +1004,7 @@ def export_boundary_gif(
         cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
         cb.set_label(quantity, color="#d0d0e0")
         cb.ax.tick_params(colors="#8899aa")
+        _apply_uniform_axes(ax, ext2d, xdir, ydir)
         ax.set_title(f"BNDF: {quantity} | t = {obst.times[it]:.1f} s", fontsize=14, color="#e94560")
         buf = _fig_to_raw_bytes(fig, 120)
         pil_frames.append(Image.open(buf).convert("RGB"))
