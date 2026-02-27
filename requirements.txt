@@ -1,5 +1,18 @@
+# Core web framework
 flask>=3.0.0
+
+# FDS simulation data reader
 fdsreader>=1.9.0
+
+# Numerical computation
 numpy>=1.24.0
+
+# Plot rendering (Agg backend, high-res PNG export at 300 DPI)
 matplotlib>=3.7.0
+
+# Image processing (GIF animation export)
 Pillow>=9.0.0
+
+# Standard library modules also used (no install needed):
+#   io, base64, re, zipfile, os, traceback
+

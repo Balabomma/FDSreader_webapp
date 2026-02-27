@@ -6,16 +6,19 @@ A comprehensive Flask web application providing interactive visualization of FDS
 
 ### Device Data (DEVC)
 - Select and compare multiple device time-series
+- Dual-axis comparison mode (left/right axes)
+- Quantity-based filtering
 - Customizable time range filtering
 - Automatic quantity/unit labelling
 
 ### Heat Release Rate (HRR)
 - Plot HRR and energy balance columns (Q_RADI, Q_CONV, Q_COND, etc.)
+- Quick presets (HRR Only, All Q_*, All Columns)
 - Customizable time range
 
 ### Slice Data (SLCF)
 - **2D contour visualization** with time slider
-- **Multi-time snapshot grids** (6-panel view)
+- **Multi-time snapshot grids** (2-column layout)
 - **Time-step animation** with play/pause/seek controls
 - **Line profile extraction** along any spatial direction
 - **Point time-series** at any (x,y,z) location
@@ -25,15 +28,58 @@ A comprehensive Flask web application providing interactive visualization of FDS
 ### Boundary Data (BNDF)
 - **2D boundary field visualization** by obstruction
 - **Orientation and quantity selection**
+- **Multi-time snapshot grids** with shared colour scale
 - **Time-step animation** with playback controls
 - **Center-point time-series**
 - Customizable colormaps and value ranges
+
+### Plot3D Data (PL3D)
+- 3D volumetric cut-plane visualization
+- Axis selection (X, Y, Z) with position control
+- Customizable colormaps and value ranges
+
+### Smoke3D Data (S3D)
+- Volumetric smoke cut-plane visualization
+- Axis selection with position control
+- Customizable colormaps and value ranges
+
+### Particle Data (PART)
+- 2D scatter plot of particle positions (XY, XZ, YZ planes)
+- Colour-by-quantity support
+- Histogram visualization of particle quantities
+
+### Isosurface Data (ISOF)
+- 2D projection of isosurface vertex positions
+- Colour data support when available
+
+### Evacuation Data (EVAC)
+- Agent floor plan scatter at any timestep
+- Time-series metrics: agent count, deaths, FED, exit counters
+- Class-based filtering
+
+### Performance (CPU & Steps)
+- CPU time column plotting
+- Timestep data visualization
+- Customizable time range and column selection
+
+### High-Resolution PNG Export
+- **Single-frame HD PNG download** (300 DPI, 12×8 inches) for all data types
+- **Multi-timestep separate PNGs** — one PNG per selected timestep with **shared colour scale** and embedded colorbar, packaged as a ZIP
+- **Animation PNG sequences** — evenly-spaced frames as ZIP for slices, boundaries, smoke3d, and particles
+- Dark and light (print-friendly) theme support
+- Available from every viewer page via dedicated download buttons
+
+### GIF Animation Export
+- Animated GIF export for slice and boundary animations
+- Configurable frame count and FPS
 
 ### General
 - Dark theme optimized for fire engineering analysis
 - Keyboard shortcuts (Space: play/pause, Arrow keys: step)
 - Simulation caching for fast re-access
+- Directory browser for simulation folder selection
 - Responsive sidebar + main plot layout
+- 11 dedicated viewer pages with separate HTML templates
 
 ## Installation
 
@@ -181,42 +227,118 @@ python app.py
 
 Open **http://localhost:5000** in your browser.
 
-1. Enter the path to your FDS simulation output directory (the folder containing `.smv` and output files)
+1. Enter the path to your FDS simulation output directory (the folder containing `.smv` and output files), or use the **Browse** button to navigate
 2. Click **Load**
-3. Use the sidebar tabs to navigate between DEVC, HRR, SLCF, and BNDF visualization
+3. Use the navigation bar to switch between viewers:
+   - **Slices** — 2D contour plots, profiles, time-series, animation
+   - **Boundaries** — Obstruction surface data with orientation control
+   - **Devices** — Time-series plots with dual-axis comparison
+   - **HRR** — Heat release rate and energy balance
+   - **Plot3D** — 3D volumetric cut-planes
+   - **Smoke3D** — Smoke volumetric cut-planes
+   - **Particles** — Lagrangian scatter and histograms
+   - **Isosurfaces** — 2D projections
+   - **Evacuation** — Agent floor plans and metrics
+   - **Performance** — CPU and timestep data
+4. Use the **Download HD PNG (300 DPI)** buttons to export publication-quality images
+5. In Multi-Timestep mode (Slices/Boundaries), use **Download Separate PNGs (ZIP)** to get one PNG per timestep with a consistent colour scale across all frames
 
 ## Project Structure
 
 ```
-fds-viewer/
-├── app.py                  # Flask application (all API endpoints)
-├── requirements.txt        # Python dependencies
+FDSReader_Webapp/
+├── app.py                          # Flask application (all API endpoints)
+├── fds_utils.py                    # fdsreader data access + matplotlib rendering
+├── requirements.txt                # Python dependencies
 ├── README.md
+├── LICENSE
 ├── templates/
-│   └── index.html          # Single-page dashboard template
+│   ├── base.html                   # Shared base template (navbar, layout)
+│   ├── index.html                  # Landing / simulation loader page
+│   ├── slice_viewer.html           # Slice data (SLCF) viewer
+│   ├── boundary_viewer.html        # Boundary data (BNDF) viewer
+│   ├── device_viewer.html          # Device data (DEVC) viewer
+│   ├── hrr_viewer.html             # Heat Release Rate viewer
+│   ├── plot3d_viewer.html          # Plot3D volumetric data viewer
+│   ├── smoke3d_viewer.html         # Smoke3D volumetric data viewer
+│   ├── particle_viewer.html        # Particle (PART) data viewer
+│   ├── isosurface_viewer.html      # Isosurface (ISOF) data viewer
+│   ├── evac_viewer.html            # Evacuation (EVAC) data viewer
+│   └── performance_viewer.html     # CPU & Steps performance viewer
 └── static/
     ├── css/
-    │   └── style.css       # Dark fire-engineering theme
+    │   └── style.css               # Dark fire-engineering theme
     └── js/
-        └── app.js          # Frontend application logic
+        ├── app.js                  # Shared frontend utilities
+        └── viewer.js               # All viewer logic & download helpers
 ```
 
 ## API Endpoints
 
+### Simulation & Navigation
 | Endpoint | Method | Description |
 |---|---|---|
+| `/api/browse` | GET | Browse directories for simulation folder |
 | `/api/load` | POST | Load simulation from directory path |
-| `/api/plot/devices` | POST | Plot selected DEVC time-series |
-| `/api/plot/hrr` | POST | Plot HRR columns |
-| `/api/plot/slice` | POST | Render 2D slice at time t |
-| `/api/plot/slice/animate` | POST | Generate slice animation frames |
-| `/api/plot/slice/multi` | POST | Multi-time snapshot grid |
-| `/api/plot/slice/profile` | POST | Extract 1D line profile |
-| `/api/plot/slice/timeseries` | POST | Point time-series from slice |
-| `/api/plot/boundary` | POST | Render boundary field |
-| `/api/plot/boundary/timeseries` | POST | Boundary center time-series |
-| `/api/plot/boundary/animate` | POST | Boundary animation frames |
 | `/api/colormaps` | GET | List available colormaps |
+
+### Slice Data (SLCF)
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/slices` | GET | List slice metadata |
+| `/api/slice/render` | POST | Render single slice at time t |
+| `/api/slice/render_multi` | POST | Multi-time snapshot grid |
+| `/api/slice/animation_frames` | POST | Generate animation frames |
+| `/api/slice/profile` | POST | Extract 1D line profile |
+| `/api/slice/timeseries` | POST | Point time-series from slice |
+
+### Boundary Data (BNDF)
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/obstructions` | GET | List obstructions with boundary data |
+| `/api/boundary/render` | POST | Render single boundary at time t |
+| `/api/boundary/render_multi` | POST | Multi-time boundary grid |
+| `/api/boundary/animation_frames` | POST | Boundary animation frames |
+| `/api/boundary/timeseries` | POST | Boundary center time-series |
+
+### Device Data (DEVC)
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/devices` | GET | List device metadata |
+| `/api/device/render` | POST | Plot selected device time-series |
+| `/api/device/compare` | POST | Dual-axis device comparison |
+
+### HRR, Plot3D, Smoke3D, Particle, Isosurface, Evacuation, Performance
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/hrr` | GET | HRR column metadata |
+| `/api/hrr/render` | POST | Plot HRR columns |
+| `/api/plot3d` | GET | Plot3D metadata |
+| `/api/plot3d/render` | POST | Plot3D cut-plane render |
+| `/api/smoke3d` | GET | Smoke3D metadata |
+| `/api/smoke3d/render` | POST | Smoke3D cut-plane render |
+| `/api/particles` | GET | Particle class metadata |
+| `/api/particle/scatter` | POST | Particle 2D scatter render |
+| `/api/particle/histogram` | POST | Particle quantity histogram |
+| `/api/isosurfaces` | GET | Isosurface metadata |
+| `/api/isosurface/render` | POST | Isosurface 2D projection |
+| `/api/evacuation` | GET | Evacuation metadata |
+| `/api/evacuation/floorplan` | POST | Evacuation floor plan render |
+| `/api/evacuation/timeseries` | POST | Evacuation metric time-series |
+| `/api/cpu` | GET | CPU performance metadata |
+| `/api/cpu/render` | POST | Plot CPU columns |
+| `/api/steps` | GET | Steps data metadata |
+| `/api/steps/render` | POST | Plot Steps columns |
+
+### Download / Export
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/download/slice/gif` | POST | Download slice animation as GIF |
+| `/api/download/boundary/gif` | POST | Download boundary animation as GIF |
+| `/api/download/slice/multi_pngs` | POST | Download separate HD PNGs per timestep (ZIP) — shared colour scale |
+| `/api/download/boundary/multi_pngs` | POST | Download separate HD PNGs per timestep (ZIP) — shared colour scale |
+| `/api/download/png` | POST | Universal single-frame HD PNG (300 DPI) |
+| `/api/download/png/sequence` | POST | Multi-timestep PNG sequence as ZIP |
 
 ## fdsreader Capabilities Covered
 
@@ -229,12 +351,30 @@ This application implements all core capabilities demonstrated in the [fdsreader
 - Slice sub-slice access per mesh
 - Slice coordinate extraction via `return_coordinates=True`
 - `sim.obstructions` — BNDF data with `get_global_boundary_data_arrays`
+- `sim.data_3d` — Plot3D volumetric data with cut-plane extraction
+- `sim.smoke_3d` — Smoke3D volumetric data with cut-plane extraction
+- `sim.particles` — Lagrangian particle positions and quantity data
+- `sim.isosurfaces` — Isosurface vertex extraction and 2D projection
+- `sim.evacs` — Evacuation agent positions, deaths, FED metrics
+- `sim.cpu` — CPU performance data
+- `sim.steps` — Timestep data
 - Multi-mesh handling and global array merging
+- High-resolution PNG export with shared colour scales across timesteps
 
 ## Requirements
 
 - Python 3.8+
 - FDS simulation output data (completed simulation directory)
+
+## Dependencies
+
+| Package | Minimum Version | Purpose |
+|---|---|---|
+| Flask | 3.0.0 | Web framework |
+| fdsreader | 1.9.0 | FDS data parsing |
+| NumPy | 1.24.0 | Numerical computation |
+| Matplotlib | 3.7.0 | Plot rendering (Agg backend) |
+| Pillow | 9.0.0 | GIF export, image processing |
 ## Acknowledgments
 
 This web application is built on top of the [`fdsreader`](https://github.com/FireDynamics/fdsreader) Python module for reading and processing FDS (Fire Dynamics Simulator) output data. We gratefully acknowledge the authors and maintainers of `fdsreader`:
