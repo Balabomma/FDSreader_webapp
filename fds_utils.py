@@ -792,8 +792,9 @@ def render_boundary_multi(
     bbox_full = obst.bounding_box.as_list() if hasattr(obst, "bounding_box") and hasattr(obst.bounding_box, "as_list") else []
     xdir, ydir = _ORIENT_DIRS.get(orientation, ('y', 'z'))
     ext2d = _resolve_extent_and_dirs(bbox_full, xdir, ydir)
+    label = _safe_filename(getattr(obst, "id", "") or str(obst_id))
 
-    # Pre-compute timestep indices and derive global colour limits
+    # Pre-compute timestep indices and derive shared colour limits
     frame_indices: list[int] = []
     for tv in timesteps_s:
         frame_indices.append(obst.get_nearest_timestep(tv))
@@ -1674,3 +1675,195 @@ def render_steps(
         ax.grid(True, alpha=0.3)
     ax.set_title("Timestep Data", fontsize=14, color="#e94560")
     return {"image_b64": fig_to_base64(fig)}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  HIGH-RES MULTI-TIMESTEP SEPARATE PNG EXPORT
+# ═════════════════════════════════════════════════════════════════════════════
+
+import re as _re
+import zipfile as _zipfile
+
+
+def _safe_filename(s: str) -> str:
+    """Sanitize a string for use in filenames."""
+    return _re.sub(r'[^a-zA-Z0-9_\-]', '_', str(s)).strip('_')[:60]
+
+
+def _apply_print_style() -> None:
+    """Light / print-friendly style for high-res PNG exports."""
+    plt.rcParams.update({
+        "figure.facecolor": "white",
+        "axes.facecolor": "#f8f9fa",
+        "axes.edgecolor": "#333333",
+        "axes.labelcolor": "#222222",
+        "text.color": "#222222",
+        "xtick.color": "#444444",
+        "ytick.color": "#444444",
+        "grid.color": "#cccccc",
+        "grid.alpha": 0.6,
+        "legend.facecolor": "white",
+        "legend.edgecolor": "#999999",
+        "legend.labelcolor": "#222222",
+        "figure.figsize": (12, 8),
+        "font.size": 12,
+    })
+
+
+def _apply_style(theme: str) -> None:
+    """Apply dark or light (print) style based on theme string."""
+    if theme == "light":
+        _apply_print_style()
+    else:
+        _apply_dark_style()
+
+
+def _highres_fig_bytes(fig: plt.Figure, dpi: int = 300) -> io.BytesIO:
+    """Render figure to high-res PNG bytes (RGB, no transparency)."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight",
+                facecolor=fig.get_facecolor(), edgecolor="none")
+    buf.seek(0)
+    plt.close(fig)
+    return buf
+
+
+def export_slice_multi_separate(
+    sim: fdsreader.Simulation,
+    slice_id: int | str,
+    timesteps_s: list[float],
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    cmap: str = "jet",
+    use_global: bool = True,
+    mesh_index: Optional[int] = None,
+    dpi: int = 300,
+    figsize: tuple = (12, 8),
+    theme: str = "dark",
+) -> tuple[io.BytesIO, str]:
+    """
+    Generate one separate high-res PNG per selected timestep, all sharing
+    the same colour scale (vmin/vmax), each with its own embedded colorbar.
+    Returns (zip_BytesIO, filename).
+    """
+    _apply_style(theme)
+    slc = _resolve_slice(sim, slice_id)
+    q = slc.quantity.name if hasattr(slc.quantity, "name") else str(slc.quantity)
+    u = slc.quantity.unit if hasattr(slc.quantity, "unit") else ""
+    label = _safe_filename(getattr(slc, "id", "") or str(slice_id))
+
+    # ── Pre-compute ALL frames to derive shared colour limits ──
+    frames_data: list[tuple] = []
+    for tv in timesteps_s:
+        it = slc.get_nearest_timestep(tv)
+        pd, ext, xdir, ydir = _slice_frame(slc, it, use_global, mesh_index)
+        ext2d = _resolve_extent_and_dirs(ext, xdir, ydir)
+        pd = pd.T
+        frames_data.append((pd, ext2d, xdir, ydir, it))
+
+    g_vmin = vmin if vmin is not None else float(min(np.nanmin(fd[0]) for fd in frames_data))
+    g_vmax = vmax if vmax is not None else float(max(np.nanmax(fd[0]) for fd in frames_data))
+
+    # ── Render each frame with the SHARED colour limits ──
+    zip_buf = io.BytesIO()
+    with _zipfile.ZipFile(zip_buf, 'w', _zipfile.ZIP_DEFLATED) as zf:
+        for i, (pd, ext2d, xdir, ydir, it) in enumerate(frames_data):
+            _apply_style(theme)
+            t_actual = float(slc.times[it])
+
+            fig, ax = plt.subplots(figsize=figsize)
+            kw: dict[str, Any] = dict(
+                origin="lower", extent=ext2d, cmap=cmap,
+                aspect="equal", vmin=g_vmin, vmax=g_vmax,
+            )
+            im = ax.imshow(pd, **kw)
+
+            cb = fig.colorbar(im, ax=ax, orientation="horizontal",
+                              pad=0.12, shrink=0.85)
+            cbar_label = f"{q} ({u})" if u else q
+            cb.set_label(cbar_label, fontsize=11)
+
+            _apply_uniform_axes(ax, ext2d, xdir, ydir)
+            ax.set_title(f"{q} | t = {t_actual:.2f} s", fontsize=14)
+
+            png_buf = _highres_fig_bytes(fig, dpi=dpi)
+            fname = f"slice_{label}_t{it:04d}_{t_actual:.1f}s.png"
+            zf.writestr(fname, png_buf.read())
+
+    zip_buf.seek(0)
+    return zip_buf, f"slice_{label}_multi_{len(timesteps_s)}frames.zip"
+
+
+def export_boundary_multi_separate(
+    sim: fdsreader.Simulation,
+    obst_id: int | str,
+    quantity: str,
+    orientation: int,
+    timesteps_s: list[float],
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    cmap: str = "hot",
+    dpi: int = 300,
+    figsize: tuple = (12, 8),
+    theme: str = "dark",
+) -> tuple[io.BytesIO, str]:
+    """
+    Generate one separate high-res PNG per selected timestep, all sharing
+    the same colour scale (vmin/vmax), each with its own embedded colorbar.
+    Returns (zip_BytesIO, filename).
+    """
+    _apply_style(theme)
+    obst = _resolve_obst(sim, obst_id)
+    arr = _get_bndf_arr(obst, quantity, orientation)
+
+    bbox_full = (obst.bounding_box.as_list()
+                 if hasattr(obst, "bounding_box")
+                 and hasattr(obst.bounding_box, "as_list") else [])
+    xdir, ydir = _ORIENT_DIRS.get(orientation, ('y', 'z'))
+    ext2d = _resolve_extent_and_dirs(bbox_full, xdir, ydir)
+    label = _safe_filename(getattr(obst, "id", "") or str(obst_id))
+
+    # ── Pre-compute timestep indices and derive shared colour limits ──
+    frame_indices: list[int] = []
+    for tv in timesteps_s:
+        frame_indices.append(obst.get_nearest_timestep(tv))
+
+    g_vmin = vmin if vmin is not None else float(
+        min(np.nanmin(arr[it]) for it in frame_indices))
+    g_vmax = vmax if vmax is not None else float(
+        max(np.nanmax(arr[it]) for it in frame_indices))
+
+    # ── Render each frame with the SHARED colour limits ──
+    zip_buf = io.BytesIO()
+    with _zipfile.ZipFile(zip_buf, 'w', _zipfile.ZIP_DEFLATED) as zf:
+        for it in frame_indices:
+            _apply_style(theme)
+            t_actual = float(obst.times[it])
+
+            fig, ax = plt.subplots(figsize=figsize)
+            kw: dict[str, Any] = dict(
+                origin="lower", cmap=cmap, aspect="equal",
+                vmin=g_vmin, vmax=g_vmax,
+            )
+            if ext2d:
+                kw["extent"] = ext2d
+            im = ax.imshow(arr[it].T, **kw)
+
+            cb = fig.colorbar(im, ax=ax, orientation="horizontal",
+                              pad=0.12, shrink=0.85)
+            cb.set_label(quantity, fontsize=11)
+
+            _apply_uniform_axes(ax, ext2d, xdir, ydir)
+            ax.set_title(
+                f"BNDF: {quantity} | {_orient_label(orientation)} "
+                f"| t = {t_actual:.2f} s", fontsize=14)
+
+            png_buf = _highres_fig_bytes(fig, dpi=dpi)
+            fname = (f"boundary_{label}_{_safe_filename(quantity)}"
+                     f"_t{it:04d}_{t_actual:.1f}s.png")
+            zf.writestr(fname, png_buf.read())
+
+    zip_buf.seek(0)
+    return zip_buf, (f"boundary_{label}_{_safe_filename(quantity)}"
+                     f"_multi_{len(timesteps_s)}frames.zip")
+
