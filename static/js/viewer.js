@@ -1394,6 +1394,288 @@ function _downloadBlob(blob, filename) {
   URL.revokeObjectURL(a.href);
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  HIGH-RES PNG DOWNLOAD (300 DPI)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function _getExportTheme() {
+  const el = document.getElementById('exportTheme');
+  return el ? el.value : 'dark';
+}
+
+function _getExportDpi() {
+  const el = document.getElementById('exportDpi');
+  return el ? parseInt(el.value) || 300 : 300;
+}
+
+async function _downloadHighResPNG(dataType, extraPayload) {
+  showLoading('Generating high-res PNG (300 DPI)...');
+  try {
+    const payload = Object.assign({ path: SIM_PATH, data_type: dataType,
+      dpi: _getExportDpi(), theme: _getExportTheme() }, extraPayload || {});
+    const resp = await fetch('/api/download/png', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error); }
+    const blob = await resp.blob();
+    const fname = resp.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || `${dataType}_highres.png`;
+    _downloadBlob(blob, fname);
+    hideLoading();
+  } catch (e) { hideLoading(); alert('PNG download error: ' + e.message); }
+}
+
+async function _downloadPNGSequence(dataType, extraPayload) {
+  const nFrames = extraPayload.n_frames || 20;
+  showLoading(`Generating PNG sequence (${nFrames} frames @ 300 DPI)...`);
+  try {
+    const payload = Object.assign({ path: SIM_PATH, data_type: dataType,
+      dpi: _getExportDpi(), theme: _getExportTheme() }, extraPayload || {});
+    const resp = await fetch('/api/download/png/sequence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error); }
+    const blob = await resp.blob();
+    const fname = resp.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || `${dataType}_sequence.zip`;
+    _downloadBlob(blob, fname);
+    hideLoading();
+  } catch (e) { hideLoading(); alert('PNG sequence download error: ' + e.message); }
+}
+
+// ── Slice high-res download ──
+async function downloadSliceHighResPNG() {
+  const s = _getSelectedSlice();
+  if (!s) return alert('Select a slice first');
+  const payload = _slicePayload();
+  payload.timestep = parseFloat(document.getElementById('tsSelect').value) || 0;
+  await _downloadHighResPNG('slice', payload);
+}
+
+async function downloadSlicePNGSequence() {
+  const s = _getSelectedSlice();
+  if (!s) return alert('Select a slice first');
+  const payload = _slicePayload();
+  payload.t_start = numOrNull('animTStart') || 0;
+  payload.t_end = numOrNull('animTEnd');
+  payload.n_frames = parseInt(document.getElementById('animFrames')?.value) || 20;
+  await _downloadPNGSequence('slice', payload);
+}
+
+// ── Boundary high-res download ──
+async function downloadBoundaryHighResPNG() {
+  const o = _getSelectedObst();
+  if (!o) return alert('Select an obstruction first');
+  const payload = _bndfPayload();
+  payload.timestep = parseFloat(document.getElementById('bndfTsSelect').value) || 0;
+  await _downloadHighResPNG('boundary', payload);
+}
+
+// ── Slice multi-timestep separate PNGs (ZIP) ──
+async function downloadSliceMultiSeparatePNGs() {
+  const s = _getSelectedSlice();
+  if (!s) return alert('Select a slice first');
+  const sel = document.getElementById('tsMultiSelect');
+  const times = Array.from(sel.selectedOptions).map(o => parseFloat(o.value));
+  if (times.length < 1) return alert('Select at least 1 timestep');
+
+  showLoading(`Generating ${times.length} separate HD PNGs (shared color scale)...`);
+  try {
+    const payload = _slicePayload();
+    payload.timesteps = times;
+    payload.dpi = _getExportDpi();
+    payload.theme = _getExportTheme();
+    const resp = await fetch('/api/download/slice/multi_pngs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error); }
+    const blob = await resp.blob();
+    const fname = resp.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || 'slice_multi.zip';
+    _downloadBlob(blob, fname);
+    hideLoading();
+  } catch (e) { hideLoading(); alert('Download error: ' + e.message); }
+}
+
+// ── Boundary multi-timestep separate PNGs (ZIP) ──
+async function downloadBoundaryMultiSeparatePNGs() {
+  const o = _getSelectedObst();
+  if (!o) return alert('Select an obstruction first');
+  const sel = document.getElementById('bndfTsMultiSelect');
+  const times = Array.from(sel.selectedOptions).map(op => parseFloat(op.value));
+  if (times.length < 1) return alert('Select at least 1 timestep');
+
+  showLoading(`Generating ${times.length} separate HD PNGs (shared color scale)...`);
+  try {
+    const payload = _bndfPayload();
+    payload.timesteps = times;
+    payload.dpi = _getExportDpi();
+    payload.theme = _getExportTheme();
+    const resp = await fetch('/api/download/boundary/multi_pngs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error); }
+    const blob = await resp.blob();
+    const fname = resp.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || 'boundary_multi.zip';
+    _downloadBlob(blob, fname);
+    hideLoading();
+  } catch (e) { hideLoading(); alert('Download error: ' + e.message); }
+}
+
+async function downloadBoundaryPNGSequence() {
+  const o = _getSelectedObst();
+  if (!o) return alert('Select an obstruction first');
+  const payload = _bndfPayload();
+  payload.t_start = numOrNull('bndfAnimTStart') || 0;
+  payload.t_end = numOrNull('bndfAnimTEnd');
+  payload.n_frames = parseInt(document.getElementById('bndfAnimFrames')?.value) || 20;
+  await _downloadPNGSequence('boundary', payload);
+}
+
+// ── Device high-res download ──
+async function downloadDeviceHighResPNG() {
+  const ids = _getCheckedDeviceIds('devc_');
+  if (ids.length === 0) return alert('Select at least one device');
+  const tStart = numOrNull('devcTStart');
+  const tEnd = numOrNull('devcTEnd');
+  const timeRange = (tStart !== null || tEnd !== null) ? [tStart || 0, tEnd || 99999] : null;
+  await _downloadHighResPNG('device', { device_ids: ids, time_range: timeRange });
+}
+
+// ── HRR high-res download ──
+async function downloadHRRHighResPNG() {
+  const cols = _getCheckedHRRColumns();
+  if (cols.length === 0) return alert('Select at least one HRR column');
+  const tStart = numOrNull('hrrTStart');
+  const tEnd = numOrNull('hrrTEnd');
+  const timeRange = (tStart !== null || tEnd !== null) ? [tStart || 0, tEnd || 99999] : null;
+  await _downloadHighResPNG('hrr', { columns: cols, time_range: timeRange });
+}
+
+// ── Plot3D high-res download ──
+async function downloadPlot3DHighResPNG() {
+  const idx = parseInt(document.getElementById('p3dSelect').value);
+  if (isNaN(idx)) return alert('Select a Plot3D dataset first');
+  const posVal = document.getElementById('p3dPos').value;
+  await _downloadHighResPNG('plot3d', {
+    p3d_index: idx,
+    time_idx: parseInt(document.getElementById('p3dTime').value) || 0,
+    quantity_idx: parseInt(document.getElementById('p3dQty').value) || 0,
+    axis: document.getElementById('p3dAxis').value,
+    position: posVal !== '' ? parseFloat(posVal) : null,
+    cmap: document.getElementById('p3dCmap').value,
+    vmin: numOrNull('p3dVMin'),
+    vmax: numOrNull('p3dVMax'),
+  });
+}
+
+// ── Smoke3D high-res download ──
+async function downloadSmoke3DHighResPNG() {
+  const idx = parseInt(document.getElementById('s3dSelect').value);
+  if (isNaN(idx)) return alert('Select a Smoke3D dataset first');
+  const posVal = document.getElementById('s3dPos').value;
+  await _downloadHighResPNG('smoke3d', {
+    smoke_index: idx,
+    time_idx: parseInt(document.getElementById('s3dTimeIdx').value) || 0,
+    axis: document.getElementById('s3dAxis').value,
+    position: posVal !== '' ? parseFloat(posVal) : null,
+    cmap: document.getElementById('s3dCmap').value,
+    vmin: numOrNull('s3dVMin'),
+    vmax: numOrNull('s3dVMax'),
+  });
+}
+
+async function downloadSmoke3DPNGSequence() {
+  const idx = parseInt(document.getElementById('s3dSelect').value);
+  if (isNaN(idx)) return alert('Select a Smoke3D dataset first');
+  const posVal = document.getElementById('s3dPos').value;
+  await _downloadPNGSequence('smoke3d', {
+    smoke_index: idx,
+    axis: document.getElementById('s3dAxis').value,
+    position: posVal !== '' ? parseFloat(posVal) : null,
+    cmap: document.getElementById('s3dCmap').value,
+    vmin: numOrNull('s3dVMin'),
+    vmax: numOrNull('s3dVMax'),
+    t_start: 0,
+    t_end: null,
+    n_frames: 20,
+  });
+}
+
+// ── Particle high-res download ──
+async function downloadParticleHighResPNG() {
+  const idx = parseInt(document.getElementById('partClass').value);
+  if (isNaN(idx)) return alert('Select a particle class first');
+  await _downloadHighResPNG('particle', {
+    class_index: idx,
+    time_idx: parseInt(document.getElementById('partTimeIdx').value) || 0,
+    plane: document.getElementById('partPlane').value,
+    color_quantity: document.getElementById('partColorQty').value || null,
+    cmap: document.getElementById('partCmap').value,
+  });
+}
+
+async function downloadParticlePNGSequence() {
+  const idx = parseInt(document.getElementById('partClass').value);
+  if (isNaN(idx)) return alert('Select a particle class first');
+  await _downloadPNGSequence('particle', {
+    class_index: idx,
+    plane: document.getElementById('partPlane').value,
+    color_quantity: document.getElementById('partColorQty').value || null,
+    cmap: document.getElementById('partCmap').value,
+    t_start: 0,
+    t_end: null,
+    n_frames: 20,
+  });
+}
+
+// ── Isosurface high-res download ──
+async function downloadIsosurfaceHighResPNG() {
+  const idx = parseInt(document.getElementById('isoSelect').value);
+  if (isNaN(idx)) return alert('Select an isosurface first');
+  await _downloadHighResPNG('isosurface', {
+    iso_index: idx,
+    time_idx: parseInt(document.getElementById('isoTimeIdx').value) || 0,
+    plane: document.getElementById('isoPlane').value,
+    cmap: document.getElementById('isoCmap').value,
+  });
+}
+
+// ── Evacuation high-res download ──
+async function downloadEvacHighResPNG() {
+  const mode = document.getElementById('evacViewMode')?.value || 'floorplan';
+  if (mode === 'floorplan') {
+    const classVal = document.getElementById('evacClassFilter').value;
+    await _downloadHighResPNG('evacuation', {
+      time_idx: parseInt(document.getElementById('evacTimeIdx').value) || 0,
+      class_index: classVal !== '' ? parseInt(classVal) : null,
+      metric: 'floorplan',
+    });
+  } else {
+    await _downloadHighResPNG('evacuation', {
+      metric: document.getElementById('evacMetric').value,
+    });
+  }
+}
+
+// ── Performance (CPU/Steps) high-res download ──
+async function downloadPerfHighResPNG() {
+  const cols = _getCheckedPerfCols();
+  if (cols.length === 0) return alert('Select at least one column');
+  const source = document.getElementById('perfSource').value;
+  const tStart = numOrNull('perfTStart');
+  const tEnd = numOrNull('perfTEnd');
+  const timeRange = (tStart !== null || tEnd !== null) ? [tStart || 0, tEnd || 99999] : null;
+  await _downloadHighResPNG(source, { columns: cols, time_range: timeRange });
+}
+
+
 function downloadCurrentImage() {
   const img = document.getElementById('plotImage');
   if (!img || !img.src || img.classList.contains('d-none')) return alert('No plot to download');

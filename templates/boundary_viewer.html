@@ -55,8 +55,11 @@
                 <label class="form-label small text-secondary">Select Timestep</label>
                 <select id="bndfTsSelect" class="form-select form-select-sm bg-dark border-secondary"></select>
               </div>
-              <button class="btn btn-warning btn-sm w-100" onclick="renderSingleBoundary()">
+              <button class="btn btn-warning btn-sm w-100 mb-2" onclick="renderSingleBoundary()">
                 <i class="bi bi-image"></i> Render
+              </button>
+              <button class="btn btn-outline-success btn-sm w-100" onclick="downloadBoundaryHighResPNG()">
+                <i class="bi bi-download"></i> Download HD PNG (300 DPI)
               </button>
             </div>
 
@@ -66,9 +69,13 @@
                 <label class="form-label small text-secondary">Select Timesteps (hold Ctrl)</label>
                 <select id="bndfTsMultiSelect" class="form-select form-select-sm bg-dark border-secondary" multiple size="6"></select>
               </div>
-              <button class="btn btn-info btn-sm w-100" onclick="renderMultiBoundary()">
+              <button class="btn btn-info btn-sm w-100 mb-2" onclick="renderMultiBoundary()">
                 <i class="bi bi-grid-3x2"></i> Render Grid
               </button>
+              <button class="btn btn-outline-success btn-sm w-100" onclick="downloadBoundaryMultiSeparatePNGs()">
+                <i class="bi bi-file-earmark-zip"></i> Download Separate PNGs (ZIP, 300 DPI)
+              </button>
+              <small class="text-secondary d-block mt-1">One PNG per timestep, same color scale across all.</small>
             </div>
 
             <!-- ── ANIMATION ───────────────────────────────────── -->
@@ -103,6 +110,9 @@
                   </button>
                   <button class="btn btn-outline-danger btn-sm" onclick="downloadBndfGIF()">
                     <i class="bi bi-filetype-gif"></i> GIF
+                  </button>
+                  <button class="btn btn-outline-success btn-sm" onclick="downloadBoundaryPNGSequence()">
+                    <i class="bi bi-file-earmark-zip"></i> PNGs
                   </button>
                 </div>
                 <input type="range" class="form-range" id="bndfAnimScrubber" min="0" max="0" value="0" oninput="scrubBndfAnim(this.value)">

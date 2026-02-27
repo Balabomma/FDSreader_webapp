@@ -195,6 +195,35 @@ def api_slice_render_multi():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/download/slice/multi_pngs", methods=["POST"])
+def download_slice_multi_pngs():
+    """Download separate PNGs for each selected timestep with shared color scale."""
+    d = request.get_json()
+    path = d.get("path") or session.get("sim_path")
+    if not path:
+        return jsonify({"error": "No simulation loaded"}), 400
+    try:
+        sim = fds_utils.load_simulation(path)
+        zip_buf, fname = fds_utils.export_slice_multi_separate(
+            sim,
+            slice_id=d.get("slice_id", 0),
+            timesteps_s=d.get("timesteps", []),
+            vmin=d.get("vmin"),
+            vmax=d.get("vmax"),
+            cmap=d.get("cmap", "jet"),
+            use_global=d.get("use_global", True),
+            mesh_index=d.get("mesh_index"),
+            dpi=d.get("dpi", 300),
+            figsize=tuple(d.get("figsize", [12, 8])),
+            theme=d.get("theme", "dark"),
+        )
+        return send_file(zip_buf, mimetype="application/zip",
+                         as_attachment=True, download_name=fname)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/slice/animation_frames", methods=["POST"])
 def api_slice_animation_frames():
     d = request.get_json()
@@ -324,6 +353,35 @@ def api_boundary_render_multi():
             cmap=d.get("cmap", "hot"),
         )
         return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/download/boundary/multi_pngs", methods=["POST"])
+def download_boundary_multi_pngs():
+    """Download separate PNGs for each selected timestep with shared color scale."""
+    d = request.get_json()
+    path = d.get("path") or session.get("sim_path")
+    if not path:
+        return jsonify({"error": "No simulation loaded"}), 400
+    try:
+        sim = fds_utils.load_simulation(path)
+        zip_buf, fname = fds_utils.export_boundary_multi_separate(
+            sim,
+            obst_id=d.get("obst_id", 0),
+            quantity=d.get("quantity", ""),
+            orientation=d.get("orientation", 3),
+            timesteps_s=d.get("timesteps", []),
+            vmin=d.get("vmin"),
+            vmax=d.get("vmax"),
+            cmap=d.get("cmap", "hot"),
+            dpi=d.get("dpi", 300),
+            figsize=tuple(d.get("figsize", [12, 8])),
+            theme=d.get("theme", "dark"),
+        )
+        return send_file(zip_buf, mimetype="application/zip",
+                         as_attachment=True, download_name=fname)
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
@@ -829,6 +887,188 @@ def colormaps():
         "turbo", "coolwarm", "RdYlBu_r", "Spectral_r", "RdBu",
         "gnuplot2", "YlOrRd", "cividis",
     ]})
+
+
+#  HIGH-RES PNG DOWNLOAD — UNIVERSAL SINGLE FRAME
+
+@app.route("/api/download/png", methods=["POST"])
+def download_highres_png():
+    """Universal high-res PNG download for any data type."""
+    d = request.get_json()
+    path = d.get("path") or session.get("sim_path")
+    if not path:
+        return jsonify({"error": "No simulation loaded"}), 400
+    data_type = d.get("data_type", "").strip()
+    if not data_type:
+        return jsonify({"error": "Missing 'data_type' parameter"}), 400
+    try:
+        sim = fds_utils.load_simulation(path)
+        dpi = d.get("dpi", 300)
+        figsize = tuple(d.get("figsize", [12, 8]))
+        theme = d.get("theme", "dark")
+
+        # Build type-specific params from the request
+        params = {}
+        if data_type == "slice":
+            params = {
+                "slice_id": d.get("slice_id", 0),
+                "timestep": d.get("timestep", 0),
+                "vmin": d.get("vmin"),
+                "vmax": d.get("vmax"),
+                "cmap": d.get("cmap", "jet"),
+                "use_global": d.get("use_global", True),
+                "mesh_index": d.get("mesh_index"),
+            }
+        elif data_type == "boundary":
+            params = {
+                "obst_id": d.get("obst_id", 0),
+                "quantity": d.get("quantity", ""),
+                "orientation": d.get("orientation", 3),
+                "timestep": d.get("timestep", 0),
+                "vmin": d.get("vmin"),
+                "vmax": d.get("vmax"),
+                "cmap": d.get("cmap", "hot"),
+            }
+        elif data_type == "device":
+            params = {
+                "device_ids": d.get("device_ids", []),
+                "time_range": d.get("time_range"),
+            }
+        elif data_type == "hrr":
+            params = {
+                "columns": d.get("columns", []),
+                "time_range": d.get("time_range"),
+            }
+        elif data_type == "plot3d":
+            params = {
+                "p3d_index": d.get("p3d_index", 0),
+                "time_idx": d.get("time_idx", 0),
+                "quantity_idx": d.get("quantity_idx", 0),
+                "axis": d.get("axis", "z"),
+                "position": d.get("position"),
+                "vmin": d.get("vmin"),
+                "vmax": d.get("vmax"),
+                "cmap": d.get("cmap", "jet"),
+            }
+        elif data_type == "smoke3d":
+            params = {
+                "smoke_index": d.get("smoke_index", 0),
+                "time_idx": d.get("time_idx", 0),
+                "axis": d.get("axis", "z"),
+                "position": d.get("position"),
+                "vmin": d.get("vmin"),
+                "vmax": d.get("vmax"),
+                "cmap": d.get("cmap", "hot"),
+            }
+        elif data_type == "particle":
+            params = {
+                "class_index": d.get("class_index", 0),
+                "time_idx": d.get("time_idx", 0),
+                "plane": d.get("plane", "xy"),
+                "color_quantity": d.get("color_quantity"),
+                "cmap": d.get("cmap", "jet"),
+            }
+        elif data_type == "isosurface":
+            params = {
+                "iso_index": d.get("iso_index", 0),
+                "time_idx": d.get("time_idx", 0),
+                "plane": d.get("plane", "xy"),
+                "cmap": d.get("cmap", "hot"),
+            }
+        elif data_type == "evacuation":
+            params = {
+                "time_idx": d.get("time_idx", 0),
+                "class_index": d.get("class_index"),
+                "metric": d.get("metric", "floorplan"),
+            }
+        elif data_type == "cpu":
+            params = {
+                "columns": d.get("columns", []),
+                "time_range": d.get("time_range"),
+            }
+        elif data_type == "steps":
+            params = {
+                "columns": d.get("columns", []),
+                "time_range": d.get("time_range"),
+            }
+
+        png_buf, fname = fds_utils.export_highres_png(
+            sim, data_type, dpi=dpi, figsize=figsize, theme=theme, **params
+        )
+        return send_file(png_buf, mimetype="image/png",
+                         as_attachment=True, download_name=fname)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+#  HIGH-RES PNG SEQUENCE — MULTI-TIMESTEP (ZIP)
+
+@app.route("/api/download/png/sequence", methods=["POST"])
+def download_png_sequence():
+    """Multi-timestep PNG sequence as ZIP archive."""
+    d = request.get_json()
+    path = d.get("path") or session.get("sim_path")
+    if not path:
+        return jsonify({"error": "No simulation loaded"}), 400
+    data_type = d.get("data_type", "").strip()
+    if not data_type:
+        return jsonify({"error": "Missing 'data_type' parameter"}), 400
+    try:
+        sim = fds_utils.load_simulation(path)
+        dpi = d.get("dpi", 300)
+        figsize = tuple(d.get("figsize", [12, 8]))
+        theme = d.get("theme", "dark")
+        t_start = d.get("t_start", 0)
+        t_end = d.get("t_end")
+        n_frames = d.get("n_frames", 20)
+
+        params = {}
+        if data_type == "slice":
+            params = {
+                "slice_id": d.get("slice_id", 0),
+                "vmin": d.get("vmin"),
+                "vmax": d.get("vmax"),
+                "cmap": d.get("cmap", "jet"),
+                "use_global": d.get("use_global", True),
+                "mesh_index": d.get("mesh_index"),
+            }
+        elif data_type == "boundary":
+            params = {
+                "obst_id": d.get("obst_id", 0),
+                "quantity": d.get("quantity", ""),
+                "orientation": d.get("orientation", 3),
+                "vmin": d.get("vmin"),
+                "vmax": d.get("vmax"),
+                "cmap": d.get("cmap", "hot"),
+            }
+        elif data_type == "smoke3d":
+            params = {
+                "smoke_index": d.get("smoke_index", 0),
+                "axis": d.get("axis", "z"),
+                "position": d.get("position"),
+                "vmin": d.get("vmin"),
+                "vmax": d.get("vmax"),
+                "cmap": d.get("cmap", "hot"),
+            }
+        elif data_type == "particle":
+            params = {
+                "class_index": d.get("class_index", 0),
+                "plane": d.get("plane", "xy"),
+                "color_quantity": d.get("color_quantity"),
+                "cmap": d.get("cmap", "jet"),
+            }
+
+        zip_buf, fname = fds_utils.export_multi_timestep_pngs(
+            sim, data_type,
+            t_start=t_start, t_end=t_end, n_frames=n_frames,
+            dpi=dpi, figsize=figsize, theme=theme, **params
+        )
+        return send_file(zip_buf, mimetype="application/zip",
+                         as_attachment=True, download_name=fname)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 
 

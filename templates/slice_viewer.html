@@ -58,8 +58,11 @@
                 <label class="form-label small text-secondary">Select Timestep</label>
                 <select id="tsSelect" class="form-select form-select-sm bg-dark border-secondary"></select>
               </div>
-              <button class="btn btn-danger btn-sm w-100" onclick="renderSingleSlice()">
+              <button class="btn btn-danger btn-sm w-100 mb-2" onclick="renderSingleSlice()">
                 <i class="bi bi-image"></i> Render
+              </button>
+              <button class="btn btn-outline-success btn-sm w-100" onclick="downloadSliceHighResPNG()">
+                <i class="bi bi-download"></i> Download HD PNG (300 DPI)
               </button>
             </div>
 
@@ -69,9 +72,13 @@
                 <label class="form-label small text-secondary">Select Timesteps (hold Ctrl)</label>
                 <select id="tsMultiSelect" class="form-select form-select-sm bg-dark border-secondary" multiple size="6"></select>
               </div>
-              <button class="btn btn-info btn-sm w-100" onclick="renderMultiSlice()">
+              <button class="btn btn-info btn-sm w-100 mb-2" onclick="renderMultiSlice()">
                 <i class="bi bi-grid-3x2"></i> Render Grid
               </button>
+              <button class="btn btn-outline-success btn-sm w-100" onclick="downloadSliceMultiSeparatePNGs()">
+                <i class="bi bi-file-earmark-zip"></i> Download Separate PNGs (ZIP, 300 DPI)
+              </button>
+              <small class="text-secondary d-block mt-1">One PNG per timestep, same color scale across all.</small>
             </div>
 
             <!-- ── ANIMATION ───────────────────────────────────── -->
@@ -106,6 +113,9 @@
                   </button>
                   <button class="btn btn-outline-danger btn-sm" onclick="downloadSliceGIF()">
                     <i class="bi bi-filetype-gif"></i> GIF
+                  </button>
+                  <button class="btn btn-outline-success btn-sm" onclick="downloadSlicePNGSequence()">
+                    <i class="bi bi-file-earmark-zip"></i> PNGs
                   </button>
                 </div>
                 <input type="range" class="form-range" id="animScrubber" min="0" max="0" value="0" oninput="scrubSliceAnim(this.value)">
