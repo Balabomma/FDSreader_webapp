@@ -1,8 +1,10 @@
 /* ═══════════════════════════════════════════════════════════
-   FDS Viewer — Dark Theme Styles (Bootstrap 5)
+   FDS Viewer — Multi-Theme Styles (Bootstrap 5)
+   Themes: dark (default), light, skyblue
    ═══════════════════════════════════════════════════════════ */
 
-:root {
+/* ── Dark Theme (default) ──────────────────────────────────── */
+[data-theme="dark"], :root {
   --bg-primary: #0f0f1a;
   --bg-card: #1a1a2e;
   --bg-surface: #16213e;
@@ -12,6 +14,68 @@
   --accent-red: #e94560;
   --accent-blue: #53d8fb;
   --accent-orange: #f5a623;
+  --navbar-bg: #1a1a2e;
+  --navbar-text: #e0e0f0;
+  --modal-bg: #1a1a2e;
+  --loading-overlay: rgba(15, 15, 26, 0.85);
+  --scrollbar-track: #0f0f1a;
+  --scrollbar-thumb: #334466;
+  --scrollbar-hover: #556688;
+  --input-bg: #16213e;
+  --card-header-bg: rgba(22, 33, 62, 0.7);
+  --btn-close-filter: invert(1);
+  --dropdown-bg: #1a1a2e;
+  --link-color: #53d8fb;
+}
+
+/* ── Light Theme ───────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-surface: #e9ecef;
+  --border-color: #ced4da;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --accent-red: #dc3545;
+  --accent-blue: #0d6efd;
+  --accent-orange: #fd7e14;
+  --navbar-bg: #ffffff;
+  --navbar-text: #212529;
+  --modal-bg: #ffffff;
+  --loading-overlay: rgba(240, 242, 245, 0.9);
+  --scrollbar-track: #f0f2f5;
+  --scrollbar-thumb: #ced4da;
+  --scrollbar-hover: #adb5bd;
+  --input-bg: #ffffff;
+  --card-header-bg: rgba(233, 236, 239, 0.8);
+  --btn-close-filter: none;
+  --dropdown-bg: #ffffff;
+  --link-color: #0d6efd;
+}
+
+/* ── Sky Blue Theme ────────────────────────────────────────── */
+[data-theme="skyblue"] {
+  --bg-primary: #e3f2fd;
+  --bg-card: #bbdefb;
+  --bg-surface: #90caf9;
+  --border-color: #64b5f6;
+  --text-primary: #0d2137;
+  --text-secondary: #37474f;
+  --accent-red: #e53935;
+  --accent-blue: #1565c0;
+  --accent-orange: #ff8f00;
+  --navbar-bg: #1565c0;
+  --navbar-text: #ffffff;
+  --modal-bg: #bbdefb;
+  --loading-overlay: rgba(227, 242, 253, 0.9);
+  --scrollbar-track: #e3f2fd;
+  --scrollbar-thumb: #64b5f6;
+  --scrollbar-hover: #42a5f5;
+  --input-bg: #e3f2fd;
+  --card-header-bg: rgba(144, 202, 249, 0.5);
+  --btn-close-filter: none;
+  --dropdown-bg: #bbdefb;
+  --link-color: #1565c0;
 }
 
 /* ── Base ──────────────────────────────────────────────────── */
@@ -32,13 +96,62 @@ code {
 
 /* ── Navbar ────────────────────────────────────────────────── */
 .navbar {
-  background: var(--bg-card) !important;
+  background: var(--navbar-bg) !important;
   border-bottom: 1px solid var(--border-color) !important;
   font-family: 'Inter', sans-serif;
 }
 .navbar-brand {
   font-size: 1.2rem;
   letter-spacing: 0.02em;
+  color: var(--navbar-text) !important;
+}
+.navbar .nav-link {
+  color: var(--navbar-text) !important;
+  opacity: 0.8;
+}
+.navbar .nav-link:hover,
+.navbar .nav-link.active {
+  opacity: 1;
+}
+
+/* ── Theme Switcher ────────────────────────────────────────── */
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 12px;
+}
+.theme-switcher .theme-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.theme-switcher .theme-btn:hover {
+  transform: scale(1.15);
+}
+.theme-switcher .theme-btn.active {
+  border-color: var(--accent-red);
+  box-shadow: 0 0 6px var(--accent-red);
+}
+.theme-btn-dark {
+  background: #1a1a2e;
+  color: #e0e0f0;
+}
+.theme-btn-light {
+  background: #f0f2f5;
+  color: #212529;
+}
+.theme-btn-skyblue {
+  background: #64b5f6;
+  color: #0d2137;
 }
 
 /* ── Main layout ───────────────────────────────────────────── */
@@ -53,14 +166,14 @@ code {
   border-color: var(--border-color) !important;
 }
 .card-header {
-  background: rgba(22, 33, 62, 0.7) !important;
+  background: var(--card-header-bg) !important;
   border-color: var(--border-color) !important;
 }
 
-/* ── Form controls (dark) ──────────────────────────────────── */
+/* ── Form controls ─────────────────────────────────────────── */
 .form-control,
 .form-select {
-  background-color: var(--bg-surface) !important;
+  background-color: var(--input-bg) !important;
   border-color: var(--border-color) !important;
   color: var(--text-primary) !important;
   font-size: 0.85rem;
@@ -75,7 +188,7 @@ code {
   opacity: 0.7;
 }
 .input-group-text {
-  background-color: var(--bg-surface) !important;
+  background-color: var(--input-bg) !important;
   border-color: var(--border-color) !important;
   color: var(--text-secondary) !important;
 }
@@ -112,7 +225,7 @@ code {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(15, 15, 26, 0.85);
+  background: var(--loading-overlay);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -163,14 +276,14 @@ select[multiple] option:checked {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #556688;
+  background: var(--scrollbar-hover);
 }
 
 /* ── Feature cards (index page) ────────────────────────────── */
@@ -194,3 +307,87 @@ select[multiple] option:checked {
     padding-top: 60px;
   }
 }
+
+/* ── Theme-aware dropdown menus ────────────────────────────── */
+.dropdown-menu {
+  background-color: var(--dropdown-bg) !important;
+  border-color: var(--border-color) !important;
+}
+.dropdown-item {
+  color: var(--text-primary) !important;
+}
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Theme-aware modal ─────────────────────────────────────── */
+.modal-content {
+  background-color: var(--modal-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+.modal-header {
+  border-color: var(--border-color) !important;
+}
+.modal-footer {
+  border-color: var(--border-color) !important;
+}
+.btn-close {
+  filter: var(--btn-close-filter);
+}
+
+/* ── Theme-aware links ─────────────────────────────────────── */
+a.text-info {
+  color: var(--link-color) !important;
+}
+
+/* ── Loading overlay text ──────────────────────────────────── */
+#loadingText {
+  color: var(--text-primary) !important;
+}
+
+/* ── Theme-aware list group ────────────────────────────────── */
+.list-group-item {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+/* ── Light/skyblue theme: override hardcoded bg-dark in HTML ─ */
+[data-theme="light"] .bg-dark,
+[data-theme="skyblue"] .bg-dark {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .text-light,
+[data-theme="skyblue"] .text-light {
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .border-secondary,
+[data-theme="skyblue"] .border-secondary {
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .text-secondary,
+[data-theme="skyblue"] .text-secondary {
+  color: var(--text-secondary) !important;
+}
+[data-theme="light"] .btn-close-white,
+[data-theme="skyblue"] .btn-close-white {
+  filter: none;
+}
+
+/* ── Smooth theme transition ───────────────────────────────── */
+body,
+.navbar,
+.card,
+.card-header,
+.form-control,
+.form-select,
+.input-group-text,
+.modal-content,
+.dropdown-menu {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
