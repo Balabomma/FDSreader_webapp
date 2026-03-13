@@ -1,725 +1,393 @@
 /* ═══════════════════════════════════════════════════════════
-   FDS Viewer — Frontend Application Logic
+   FDS Viewer — Multi-Theme Styles (Bootstrap 5)
+   Themes: dark (default), light, skyblue
    ═══════════════════════════════════════════════════════════ */
 
-let SIM_PATH = '';
-let SIM_DATA = null;
-
-// Slice data mode state
-let sliceMode = 'global';  // 'global' or 'mesh'
-let selectedMeshIndex = null;
-
-// Animation state
-let animFrames = [];
-let animIdx = 0;
-let animTimer = null;
-let animPlaying = false;
-let animType = ''; // 'slice' or 'boundary'
-
-// ─── HELPERS ────────────────────────────────────────────────
-
-function showLoader(msg) {
-  document.getElementById('loaderText').textContent = msg || 'Loading...';
-  document.getElementById('loaderOverlay').classList.add('active');
-}
-function hideLoader() {
-  document.getElementById('loaderOverlay').classList.remove('active');
-}
-
-async function apiPost(url, body) {
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(body)
-  });
-  const data = await resp.json();
-  if (!resp.ok || data.error) throw new Error(data.error || 'API error');
-  return data;
+/* ── Dark Theme (default) ──────────────────────────────────── */
+[data-theme="dark"], :root {
+  --bg-primary: #0f0f1a;
+  --bg-card: #1a1a2e;
+  --bg-surface: #16213e;
+  --border-color: #334466;
+  --text-primary: #e0e0f0;
+  --text-secondary: #8899aa;
+  --accent-red: #e94560;
+  --accent-blue: #53d8fb;
+  --accent-orange: #f5a623;
+  --navbar-bg: #1a1a2e;
+  --navbar-text: #e0e0f0;
+  --modal-bg: #1a1a2e;
+  --loading-overlay: rgba(15, 15, 26, 0.85);
+  --scrollbar-track: #0f0f1a;
+  --scrollbar-thumb: #334466;
+  --scrollbar-hover: #556688;
+  --input-bg: #16213e;
+  --card-header-bg: rgba(22, 33, 62, 0.7);
+  --btn-close-filter: invert(1);
+  --dropdown-bg: #1a1a2e;
+  --link-color: #53d8fb;
 }
 
-function showPlot(title, imgB64) {
-  document.getElementById('welcomeScreen').style.display = 'none';
-  document.getElementById('plotArea').style.display = 'block';
-  document.getElementById('plotTitle').textContent = title;
-  document.getElementById('plotImage').src = 'data:image/png;base64,' + imgB64;
-  document.getElementById('animControls').style.display = 'none';
+/* ── Light Theme ───────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-surface: #e9ecef;
+  --border-color: #ced4da;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --accent-red: #dc3545;
+  --accent-blue: #0d6efd;
+  --accent-orange: #fd7e14;
+  --navbar-bg: #ffffff;
+  --navbar-text: #212529;
+  --modal-bg: #ffffff;
+  --loading-overlay: rgba(240, 242, 245, 0.9);
+  --scrollbar-track: #f0f2f5;
+  --scrollbar-thumb: #ced4da;
+  --scrollbar-hover: #adb5bd;
+  --input-bg: #ffffff;
+  --card-header-bg: rgba(233, 236, 239, 0.8);
+  --btn-close-filter: none;
+  --dropdown-bg: #ffffff;
+  --link-color: #0d6efd;
 }
 
-function numOrNull(id) {
-  const v = document.getElementById(id).value;
-  return v === '' ? null : parseFloat(v);
+/* ── Sky Blue Theme ────────────────────────────────────────── */
+[data-theme="skyblue"] {
+  --bg-primary: #e3f2fd;
+  --bg-card: #bbdefb;
+  --bg-surface: #90caf9;
+  --border-color: #64b5f6;
+  --text-primary: #0d2137;
+  --text-secondary: #37474f;
+  --accent-red: #e53935;
+  --accent-blue: #1565c0;
+  --accent-orange: #ff8f00;
+  --navbar-bg: #1565c0;
+  --navbar-text: #ffffff;
+  --modal-bg: #bbdefb;
+  --loading-overlay: rgba(227, 242, 253, 0.9);
+  --scrollbar-track: #e3f2fd;
+  --scrollbar-thumb: #64b5f6;
+  --scrollbar-hover: #42a5f5;
+  --input-bg: #e3f2fd;
+  --card-header-bg: rgba(144, 202, 249, 0.5);
+  --btn-close-filter: none;
+  --dropdown-bg: #bbdefb;
+  --link-color: #1565c0;
 }
 
-// ─── LOAD SIMULATION ────────────────────────────────────────
+/* ── Base ──────────────────────────────────────────────────── */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
 
-async function loadSimulation() {
-  const path = document.getElementById('simPath').value.trim();
-  if (!path) return alert('Enter a simulation directory path');
+code {
+  color: var(--accent-blue);
+  background: rgba(83, 216, 251, 0.08);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+}
 
-  showLoader('Loading simulation data...');
-  try {
-    const data = await apiPost('/api/load', {path});
-    SIM_PATH = path;
-    SIM_DATA = data;
+/* ── Navbar ────────────────────────────────────────────────── */
+.navbar {
+  background: var(--navbar-bg) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-family: 'Inter', sans-serif;
+}
+.navbar-brand {
+  font-size: 1.2rem;
+  letter-spacing: 0.02em;
+  color: var(--navbar-text) !important;
+}
+.navbar .nav-link {
+  color: var(--navbar-text) !important;
+  opacity: 0.8;
+}
+.navbar .nav-link:hover,
+.navbar .nav-link.active {
+  opacity: 1;
+}
 
-    // Update status
-    const info = data.info;
-    document.getElementById('simInfo').innerHTML =
-      `<span class="status-dot online"></span>` +
-      `<span>${info.chid} — ${info.meshes} mesh, ${info.slices} slices, ${info.devices} devcs</span>`;
+/* ── Theme Switcher ────────────────────────────────────────── */
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 12px;
+}
+.theme-switcher .theme-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.theme-switcher .theme-btn:hover {
+  transform: scale(1.15);
+}
+.theme-switcher .theme-btn.active {
+  border-color: var(--accent-red);
+  box-shadow: 0 0 6px var(--accent-red);
+}
+.theme-btn-dark {
+  background: #1a1a2e;
+  color: #e0e0f0;
+}
+.theme-btn-light {
+  background: #f0f2f5;
+  color: #212529;
+}
+.theme-btn-skyblue {
+  background: #64b5f6;
+  color: #0d2137;
+}
 
-    // Show nav
-    document.getElementById('sbNav').style.display = 'flex';
+/* ── Main layout ───────────────────────────────────────────── */
+.main-wrapper {
+  padding-top: 70px;
+  min-height: 100vh;
+}
 
-    // Populate panels
-    populateDevices(data.devices);
-    populateHRR(data.hrr_columns);
-    populateSlices(data.slices);
-    populateBoundaries(data.boundaries);
+/* ── Cards ─────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+}
+.card-header {
+  background: var(--card-header-bg) !important;
+  border-color: var(--border-color) !important;
+}
 
-    switchTab('devices');
-    hideLoader();
-  } catch(e) {
-    hideLoader();
-    alert('Error loading simulation: ' + e.message);
+/* ── Form controls ─────────────────────────────────────────── */
+.form-control,
+.form-select {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+  font-size: 0.85rem;
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 0.15rem rgba(83, 216, 251, 0.2) !important;
+}
+.form-control::placeholder {
+  color: var(--text-secondary) !important;
+  opacity: 0.7;
+}
+.input-group-text {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* ── Alerts / Info boxes ───────────────────────────────────── */
+.alert-dark {
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn-danger {
+  background-color: var(--accent-red) !important;
+  border-color: var(--accent-red) !important;
+}
+.btn-danger:hover {
+  background-color: #d63350 !important;
+}
+
+/* ── Sidebar sticky ────────────────────────────────────────── */
+.sticky-sidebar {
+  position: sticky;
+  top: 75px;
+}
+
+/* ── Loading overlay ───────────────────────────────────────── */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--loading-overlay);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Plot image ────────────────────────────────────────────── */
+#plotImage {
+  max-width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+/* ── Placeholder message ───────────────────────────────────── */
+.placeholder-message {
+  padding: 80px 20px;
+}
+
+/* ── Timestep multi-select ─────────────────────────────────── */
+select[multiple] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--bg-surface);
+}
+select[multiple] option {
+  padding: 2px 6px;
+  font-size: 0.8rem;
+}
+select[multiple] option:checked {
+  background: var(--accent-blue);
+  color: #000;
+}
+
+/* ── Range slider ──────────────────────────────────────────── */
+.form-range::-webkit-slider-thumb {
+  background: var(--accent-red);
+}
+.form-range::-moz-range-thumb {
+  background: var(--accent-red);
+}
+.form-range::-webkit-slider-runnable-track {
+  background: var(--border-color);
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+/* ── Feature cards (index page) ────────────────────────────── */
+.feature-card-grid .card:hover {
+  border-color: var(--accent-blue) !important;
+  transform: translateY(-2px);
+  transition: all 0.2s ease;
+}
+
+/* ── Badge colours ─────────────────────────────────────────── */
+.badge.bg-success {
+  background-color: #198754 !important;
+}
+
+/* ── Responsive fixes ──────────────────────────────────────── */
+@media (max-width: 991px) {
+  .sticky-sidebar {
+    position: static;
+  }
+  .main-wrapper {
+    padding-top: 60px;
   }
 }
 
-// ─── TAB SWITCHING ──────────────────────────────────────────
-
-function switchTab(tab) {
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.nav-btn[data-tab="${tab}"]`).classList.add('active');
-  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-  const panel = document.getElementById('panel-' + tab);
-  if (panel) panel.style.display = 'block';
+/* ── Theme-aware dropdown menus ────────────────────────────── */
+.dropdown-menu {
+  background-color: var(--dropdown-bg) !important;
+  border-color: var(--border-color) !important;
+}
+.dropdown-item {
+  color: var(--text-primary) !important;
+}
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
 }
 
-// ─── POPULATE: DEVICES ──────────────────────────────────────
-
-function populateDevices(devices) {
-  const el = document.getElementById('deviceList');
-  el.innerHTML = '';
-  devices.forEach(d => {
-    if (d.id === 'Time') return;
-    const lbl = document.createElement('label');
-    lbl.innerHTML = `<input type="checkbox" value="${d.id}" checked> ${d.id} <span style="color:#888;font-size:0.7rem">(${d.quantity})</span>`;
-    el.appendChild(lbl);
-  });
+/* ── Theme-aware modal ─────────────────────────────────────── */
+.modal-content {
+  background-color: var(--modal-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+.modal-header {
+  border-color: var(--border-color) !important;
+}
+.modal-footer {
+  border-color: var(--border-color) !important;
+}
+.btn-close {
+  filter: var(--btn-close-filter);
 }
 
-async function plotDevices() {
-  const checks = document.querySelectorAll('#deviceList input:checked');
-  const ids = Array.from(checks).map(c => c.value);
-  if (!ids.length) return alert('Select at least one device');
-
-  const tMin = numOrNull('devTMin'), tMax = numOrNull('devTMax');
-  const tRange = (tMin !== null && tMax !== null) ? [tMin, tMax] : null;
-
-  showLoader('Plotting devices...');
-  try {
-    const data = await apiPost('/api/plot/devices', {path: SIM_PATH, device_ids: ids, time_range: tRange});
-    showPlot('Device Data (DEVC)', data.image);
-    hideLoader();
-  } catch(e) { hideLoader(); alert(e.message); }
+/* ── Theme-aware links ─────────────────────────────────────── */
+a.text-info {
+  color: var(--link-color) !important;
 }
 
-// ─── POPULATE: HRR ──────────────────────────────────────────
-
-function populateHRR(cols) {
-  const el = document.getElementById('hrrList');
-  el.innerHTML = '';
-  cols.forEach(c => {
-    if (c === 'Time') return;
-    const lbl = document.createElement('label');
-    const checked = ['HRR','Q_RADI','Q_CONV','Q_COND'].includes(c) ? 'checked' : '';
-    lbl.innerHTML = `<input type="checkbox" value="${c}" ${checked}> ${c}`;
-    el.appendChild(lbl);
-  });
+/* ── Loading overlay text ──────────────────────────────────── */
+#loadingText {
+  color: var(--text-primary) !important;
 }
 
-async function plotHRR() {
-  const checks = document.querySelectorAll('#hrrList input:checked');
-  const cols = Array.from(checks).map(c => c.value);
-  if (!cols.length) return alert('Select at least one HRR column');
-
-  const tMin = numOrNull('hrrTMin'), tMax = numOrNull('hrrTMax');
-  const tRange = (tMin !== null && tMax !== null) ? [tMin, tMax] : null;
-
-  showLoader('Plotting HRR...');
-  try {
-    const data = await apiPost('/api/plot/hrr', {path: SIM_PATH, columns: cols, time_range: tRange});
-    showPlot('Heat Release Rate (HRR)', data.image);
-    hideLoader();
-  } catch(e) { hideLoader(); alert(e.message); }
+/* ── Theme-aware list group ────────────────────────────────── */
+.list-group-item {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
 
-// ─── POPULATE: SLICES ───────────────────────────────────────
-
-function populateSlices(slices) {
-  const sel = document.getElementById('sliceSelect');
-  sel.innerHTML = '<option value="">— Select a slice —</option>';
-  slices.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.index;
-    const idLabel = s.id ? ` ID="${s.id}"` : '';
-    opt.textContent = `[${s.index}]${idLabel} ${s.quantity} (${s.type}, orient=${s.orientation}, ${s.n_meshes} mesh)`;
-    opt.dataset.quantity = s.quantity;
-    sel.appendChild(opt);
-  });
-
-  // Populate quantity filter
-  const qtyFilter = document.getElementById('sliceQtyFilter');
-  qtyFilter.innerHTML = '<option value="">— All Quantities —</option>';
-  if (SIM_DATA.slice_quantities) {
-    SIM_DATA.slice_quantities.forEach(q => {
-      const opt = document.createElement('option');
-      opt.value = q; opt.textContent = q;
-      qtyFilter.appendChild(opt);
-    });
-  }
+/* ── Light/skyblue theme: override hardcoded bg-dark in HTML ─ */
+[data-theme="light"] .bg-dark,
+[data-theme="skyblue"] .bg-dark {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .text-light,
+[data-theme="skyblue"] .text-light {
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .border-secondary,
+[data-theme="skyblue"] .border-secondary {
+  border-color: var(--border-color) !important;
+}
+[data-theme="light"] .text-secondary,
+[data-theme="skyblue"] .text-secondary {
+  color: var(--text-secondary) !important;
+}
+[data-theme="light"] .btn-close-white,
+[data-theme="skyblue"] .btn-close-white {
+  filter: none;
 }
 
-function filterSlicesByQuantity() {
-  const qty = document.getElementById('sliceQtyFilter').value;
-  const sel = document.getElementById('sliceSelect');
-  const options = sel.querySelectorAll('option');
-  options.forEach(opt => {
-    if (opt.value === '') { opt.style.display = ''; return; }
-    if (!qty || opt.dataset.quantity === qty) {
-      opt.style.display = '';
-    } else {
-      opt.style.display = 'none';
-    }
-  });
-  sel.value = '';
-  onSliceSelected();
+/* ── Smooth theme transition ───────────────────────────────── */
+body,
+.navbar,
+.card,
+.card-header,
+.form-control,
+.form-select,
+.input-group-text,
+.modal-content,
+.dropdown-menu {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-function onSliceSelected() {
-  const idx = document.getElementById('sliceSelect').value;
-  if (idx === '') {
-    document.getElementById('sliceControls').style.display = 'none';
-    return;
-  }
-  const s = SIM_DATA.slices[parseInt(idx)];
-  document.getElementById('sliceControls').style.display = 'block';
-
-  // Info box
-  const idLine = s.id ? `ID: <strong>${s.id}</strong> | ` : '';
-  document.getElementById('sliceInfoBox').innerHTML =
-    `${idLine}Quantity: <strong>${s.quantity}</strong> (${s.unit})<br>` +
-    `Type: ${s.type} | Orient: ${s.orientation} | Cell-centered: ${s.cell_centered}<br>` +
-    `Extent: [${s.extent.map(v=>v.toFixed(2)).join(', ')}]<br>` +
-    `Dirs: ${s.extent_dirs.join(', ')} | Meshes: ${s.n_meshes}<br>` +
-    `Times: ${s.n_times} steps (${s.time_min.toFixed(1)}–${s.time_max.toFixed(1)} s)`;
-
-  // Slider range
-  const slider = document.getElementById('sliceTimeSlider');
-  slider.min = Math.floor(s.time_min);
-  slider.max = Math.ceil(s.time_max);
-  slider.value = Math.floor(s.time_min);
-  document.getElementById('sliceTimeVal').textContent = slider.value;
-
-  // Populate mesh selector
-  const meshSel = document.getElementById('meshSelect');
-  meshSel.innerHTML = '';
-  if (s.meshes && s.meshes.length > 0) {
-    s.meshes.forEach(m => {
-      const opt = document.createElement('option');
-      opt.value = m.mesh_index;
-      const shp = m.shape.length ? ` (${m.shape.join('×')})` : '';
-      opt.textContent = `Mesh ${m.mesh_index} — ${m.mesh_id}${shp}`;
-      meshSel.appendChild(opt);
-    });
-  }
-
-  // Reset to global mode
-  setSliceMode('global');
-
-  // Profile directions
-  const dirSel = document.getElementById('profileDir');
-  dirSel.innerHTML = '';
-  s.extent_dirs.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d; opt.textContent = d;
-    dirSel.appendChild(opt);
-  });
-
-  // Coord placeholders
-  if (s.extent_dirs.length >= 2) {
-    document.getElementById('ptCoord0').placeholder = s.extent_dirs[0];
-    document.getElementById('ptCoord1').placeholder = s.extent_dirs[1];
-  }
-}
-
-function setSliceMode(mode) {
-  sliceMode = mode;
-  document.getElementById('btnGlobal').classList.toggle('active', mode === 'global');
-  document.getElementById('btnMesh').classList.toggle('active', mode === 'mesh');
-  document.getElementById('meshSelectGroup').style.display = mode === 'mesh' ? 'block' : 'none';
-  if (mode === 'global') {
-    selectedMeshIndex = null;
-  } else {
-    selectedMeshIndex = parseInt(document.getElementById('meshSelect').value) || 0;
-  }
-}
-
-function onMeshChanged() {
-  selectedMeshIndex = parseInt(document.getElementById('meshSelect').value) || 0;
-}
-
-function _slicePayload() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  const s = SIM_DATA.slices[idx];
-  const payload = { path: SIM_PATH, slice_index: idx };
-  if (s.id) payload.slice_id = s.id;
-  payload.use_global = (sliceMode === 'global');
-  if (sliceMode === 'mesh' && selectedMeshIndex !== null) {
-    payload.mesh_index = selectedMeshIndex;
-  }
-  return payload;
-}
-
-async function plotSlice() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  if (isNaN(idx)) return alert('Select a slice');
-  const t = parseFloat(document.getElementById('sliceTimeSlider').value);
-  const s = SIM_DATA.slices[idx];
-  const modeLabel = sliceMode === 'global' ? 'Global' : `Mesh ${selectedMeshIndex}`;
-
-  showLoader('Rendering slice...');
-  try {
-    const payload = _slicePayload();
-    payload.time = t;
-    payload.colormap = document.getElementById('sliceCmap').value;
-    payload.vmin = numOrNull('sliceVMin');
-    payload.vmax = numOrNull('sliceVMax');
-    const data = await apiPost('/api/plot/slice', payload);
-    showPlot(`Slice [${idx}] ${s.quantity} [${modeLabel}] — t = ${data.actual_time.toFixed(1)} s`, data.image);
-    hideLoader();
-  } catch(e) { hideLoader(); alert(e.message); }
-}
-
-async function plotSliceMulti() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  if (isNaN(idx)) return alert('Select a slice');
-  const s = SIM_DATA.slices[idx];
-  const step = (s.time_max - s.time_min) / 5;
-  const times = Array.from({length:6}, (_,i) => Math.round(s.time_min + i*step));
-
-  showLoader('Generating multi-time view...');
-  try {
-    const payload = _slicePayload();
-    payload.times = times;
-    payload.colormap = document.getElementById('sliceCmap').value;
-    payload.vmin = numOrNull('sliceVMin');
-    payload.vmax = numOrNull('sliceVMax');
-    const data = await apiPost('/api/plot/slice/multi', payload);
-    showPlot(`Slice [${idx}] ${s.quantity} — Multi-Time Snapshots`, data.image);
-    hideLoader();
-  } catch(e) { hideLoader(); alert(e.message); }
-}
-
-// ─── SLICE ANIMATION ────────────────────────────────────────
-
-async function animateSlice() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  if (isNaN(idx)) return alert('Select a slice');
-
-  showLoader('Generating animation frames...');
-  try {
-    const payload = _slicePayload();
-    payload.time_start = numOrNull('animTStart') || 0;
-    payload.time_end = numOrNull('animTEnd');
-    payload.n_frames = parseInt(document.getElementById('animFrames').value) || 20;
-    payload.colormap = document.getElementById('sliceCmap').value;
-    payload.vmin = numOrNull('sliceVMin');
-    payload.vmax = numOrNull('sliceVMax');
-    const data = await apiPost('/api/plot/slice/animate', payload);
-    hideLoader();
-    startAnimation(data.frames, 'slice', idx);
-  } catch(e) { hideLoader(); alert(e.message); }
-}
-
-function startAnimation(frames, type, idx) {
-  stopAnimation();
-  animFrames = frames;
-  animType = type;
-  animIdx = 0;
-  animPlaying = true;
-
-  document.getElementById('welcomeScreen').style.display = 'none';
-  document.getElementById('plotArea').style.display = 'block';
-  document.getElementById('animControls').style.display = 'flex';
-  document.getElementById('plotTitle').textContent = `${type === 'slice' ? 'Slice' : 'Boundary'} Animation`;
-
-  const slider = document.getElementById('animSlider');
-  slider.min = 0;
-  slider.max = frames.length - 1;
-  slider.value = 0;
-
-  const ppBtn = type === 'slice' ? 'btnPlayPause' : 'btnBndfPlayPause';
-  document.getElementById(ppBtn).style.display = 'inline-block';
-  document.getElementById(ppBtn).textContent = '⏸ Pause';
-
-  renderFrame(0);
-  animTimer = setInterval(() => {
-    if (!animPlaying) return;
-    animIdx = (animIdx + 1) % animFrames.length;
-    renderFrame(animIdx);
-  }, 300);
-}
-
-function renderFrame(i) {
-  const f = animFrames[i];
-  document.getElementById('plotImage').src = 'data:image/png;base64,' + f.image;
-  document.getElementById('animTimeLabel').textContent = `t = ${f.time.toFixed(1)} s`;
-  document.getElementById('animSlider').value = i;
-}
-
-function seekAnimation(val) {
-  animIdx = parseInt(val);
-  renderFrame(animIdx);
-}
-
-function togglePlayback() {
-  animPlaying = !animPlaying;
-  document.getElementById('btnPlayPause').textContent = animPlaying ? '⏸ Pause' : '▶ Play';
-}
-
-function toggleBndfPlayback() {
-  animPlaying = !animPlaying;
-  document.getElementById('btnBndfPlayPause').textContent = animPlaying ? '⏸ Pause' : '▶ Play';
-}
-
-function stopAnimation() {
-  if (animTimer) clearInterval(animTimer);
-  animTimer = null;
-  animPlaying = false;
-  animFrames = [];
-}
-
-// ─── SLICE PROFILE / TIME-SERIES ────────────────────────────
-
-async function plotProfile() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  if (isNaN(idx)) return alert('Select a slice');
-
-  showLoader('Extracting profile...');
-  try {
-    const payload = _slicePayload();
-    payload.direction = document.getElementById('profileDir').value;
-    payload.position = parseFloat(document.getElementById('profilePos').value) || 0;
-    payload.time = parseFloat(document.getElementById('profileTime').value) || 100;
-    const data = await apiPost('/api/plot/slice/profile', payload);
-    showPlot('Slice Line Profile', data.image);
-    hideLoader();
-  } catch(e) { hideLoader(); alert(e.message); }
-}
-
-async function plotSliceTS() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  if (isNaN(idx)) return alert('Select a slice');
-  const s = SIM_DATA.slices[idx];
-  const point = {};
-  const v0 = parseFloat(document.getElementById('ptCoord0').value);
-  const v1 = parseFloat(document.getElementById('ptCoord1').value);
-  if (!isNaN(v0) && s.extent_dirs[0]) point[s.extent_dirs[0]] = v0;
-  if (!isNaN(v1) && s.extent_dirs[1]) point[s.extent_dirs[1]] = v1;
-
-  showLoader('Extracting time-series...');
-  try {
-    const payload = _slicePayload();
-    payload.point = point;
-    const data = await apiPost('/api/plot/slice/timeseries', payload);
-    showPlot('Slice Point Time-Series', data.image);
-    hideLoader();
-  } catch(e) { hideLoader(); alert(e.message); }
-}
-
-// ─── POPULATE: BOUNDARIES ───────────────────────────────────
-
-function populateBoundaries(bounds) {
-  const sel = document.getElementById('bndfSelect');
-  sel.innerHTML = '<option value="">— Select obstruction —</option>';
-  bounds.forEach((b, arrIdx) => {
-    // Server already filters to has_boundary_data=True, but guard just in case
-    if (b.has_boundary_data === false) return;
-    const opt = document.createElement('option');
-    opt.value = b.id;                     // Use obstruction ID as value
-    opt.dataset.arrIndex = arrIdx;        // Store array position for quick lookup
-    opt.textContent = `ID="${b.id}" — ${b.quantities.join(', ')} (orient: ${b.orientations.join(',')})`;
-    sel.appendChild(opt);
-  });
-}
-
-function onBndfSelected() {
-  const oid = document.getElementById('bndfSelect').value;
-  if (oid === '') {
-    document.getElementById('bndfControls').style.display = 'none';
-    return;
-  }
-  const b = SIM_DATA.boundaries.find(x => String(x.id) === oid);
-  if (!b) { document.getElementById('bndfControls').style.display = 'none'; return; }
-  document.getElementById('bndfControls').style.display = 'block';
-
-  // Info
-  document.getElementById('bndfInfoBox').innerHTML =
-    `ID: <strong>${b.id}</strong> | Index: ${b.index}<br>` +
-    `Box: [${b.bounding_box.map(v=>v.toFixed(2)).join(', ')}]<br>` +
-    `Quantities: ${b.quantities.join(', ')}<br>` +
-    `Orientations: ${b.orientations.join(', ')}<br>` +
-    `Meshes: ${b.n_meshes} | Times: ${b.n_times}`;
-
-  // Qty select
-  const qtySel = document.getElementById('bndfQty');
-  qtySel.innerHTML = '';
-  b.quantities.forEach(q => {
-    const o = document.createElement('option'); o.value = q; o.textContent = q; qtySel.appendChild(o);
-  });
-
-  // Orient select
-  const oSel = document.getElementById('bndfOrient');
-  oSel.innerHTML = '';
-  b.orientations.forEach(o => {
-    const opt = document.createElement('option'); opt.value = o; opt.textContent = o; oSel.appendChild(opt);
-  });
-
-  // Slider
-  if (b.time_max) {
-    const sl = document.getElementById('bndfTimeSlider');
-    sl.min = Math.floor(b.time_min);
-    sl.max = Math.ceil(b.time_max);
-    sl.value = Math.min(100, Math.ceil(b.time_max));
-    document.getElementById('bndfTimeVal').textContent = sl.value;
-  }
-}
-
-function _bndfPayload() {
-  const oid = document.getElementById('bndfSelect').value;
-  const b = SIM_DATA.boundaries.find(x => String(x.id) === oid);
-  return {
-    path: SIM_PATH,
-    obstruction_id: oid,
-    obstruction_index: b ? b.index : 0,
-    quantity: document.getElementById('bndfQty').value,
-    orientation: parseInt(document.getElementById('bndfOrient').value)
-  };
-}
-
-async function plotBoundary() {
-  const oid = document.getElementById('bndfSelect').value;
-  if (!oid) return alert('Select an obstruction');
-
-  showLoader('Rendering boundary...');
-  try {
-    const payload = _bndfPayload();
-    payload.time = parseFloat(document.getElementById('bndfTimeSlider').value);
-    payload.colormap = document.getElementById('bndfCmap').value;
-    payload.vmin = numOrNull('bndfVMin');
-    payload.vmax = numOrNull('bndfVMax');
-    const data = await apiPost('/api/plot/boundary', payload);
-    showPlot(`Boundary ID="${oid}" — t = ${data.actual_time.toFixed(1)} s`, data.image);
-    hideLoader();
-  } catch(e) { hideLoader(); alert(e.message); }
-}
-
-async function plotBndfTS() {
-  const oid = document.getElementById('bndfSelect').value;
-  if (!oid) return alert('Select an obstruction');
-
-  showLoader('Extracting boundary time-series...');
-  try {
-    const data = await apiPost('/api/plot/boundary/timeseries', _bndfPayload());
-    showPlot('Boundary Time-Series', data.image);
-    hideLoader();
-  } catch(e) { hideLoader(); alert(e.message); }
-}
-
-async function animateBoundary() {
-  const oid = document.getElementById('bndfSelect').value;
-  if (!oid) return alert('Select an obstruction');
-
-  showLoader('Generating boundary animation...');
-  try {
-    const payload = _bndfPayload();
-    payload.time_start = numOrNull('bndfAnimTStart') || 0;
-    payload.time_end = numOrNull('bndfAnimTEnd');
-    payload.n_frames = parseInt(document.getElementById('bndfAnimFrames').value) || 20;
-    payload.colormap = document.getElementById('bndfCmap').value;
-    payload.vmin = numOrNull('bndfVMin');
-    payload.vmax = numOrNull('bndfVMax');
-    const data = await apiPost('/api/plot/boundary/animate', payload);
-    hideLoader();
-    startAnimation(data.frames, 'boundary', oid);
-  } catch(e) { hideLoader(); alert(e.message); }
-}
-
-// ─── DOWNLOADS ──────────────────────────────────────────────
-
-function downloadCurrentPlot() {
-  const img = document.getElementById('plotImage');
-  if (!img.src || img.src === window.location.href) return alert('No plot to download');
-  const title = document.getElementById('plotTitle').textContent || 'plot';
-  const fname = title.replace(/[^a-zA-Z0-9_\-\.]/g, '_').replace(/_+/g, '_') + '.png';
-  const a = document.createElement('a');
-  a.href = img.src;
-  a.download = fname;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-
-async function downloadSlicePNG() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  if (isNaN(idx)) return alert('Select a slice first');
-
-  showLoader('Preparing high-res PNG...');
-  try {
-    const payload = _slicePayload();
-    payload.time = parseFloat(document.getElementById('sliceTimeSlider').value);
-    payload.colormap = document.getElementById('sliceCmap').value;
-    payload.vmin = numOrNull('sliceVMin');
-    payload.vmax = numOrNull('sliceVMax');
-    const resp = await fetch('/api/download/slice', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error); }
-    const blob = await resp.blob();
-    const fname = resp.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || 'slice.png';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fname;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    hideLoader();
-  } catch(e) { hideLoader(); alert('Download error: ' + e.message); }
-}
-
-async function downloadSliceMultiZip() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  if (isNaN(idx)) return alert('Select a slice first');
-  const s = SIM_DATA.slices[idx];
-
-  // Parse custom times or generate even steps
-  const raw = document.getElementById('dlSliceTimes').value.trim();
-  let times;
-  if (raw) {
-    times = raw.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-    if (!times.length) return alert('Enter valid comma-separated time values');
-  } else {
-    const step = (s.time_max - s.time_min) / 5;
-    times = Array.from({length:6}, (_,i) => Math.round(s.time_min + i*step));
-  }
-
-  showLoader(`Preparing ${times.length} snapshots (ZIP)...`);
-  try {
-    const payload = _slicePayload();
-    payload.times = times;
-    payload.colormap = document.getElementById('sliceCmap').value;
-    payload.vmin = numOrNull('sliceVMin');
-    payload.vmax = numOrNull('sliceVMax');
-    const resp = await fetch('/api/download/slice/multi', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error); }
-    const blob = await resp.blob();
-    const fname = resp.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || 'slices.zip';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fname;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    hideLoader();
-  } catch(e) { hideLoader(); alert('Download error: ' + e.message); }
-}
-
-async function downloadSliceGIF() {
-  const idx = parseInt(document.getElementById('sliceSelect').value);
-  if (isNaN(idx)) return alert('Select a slice first');
-
-  const nFrames = parseInt(document.getElementById('animFrames').value) || 20;
-  const fps = parseInt(document.getElementById('animFPS').value) || 4;
-
-  showLoader(`Generating GIF (${nFrames} frames)...`);
-  try {
-    const payload = _slicePayload();
-    payload.time_start = numOrNull('animTStart') || 0;
-    payload.time_end = numOrNull('animTEnd');
-    payload.n_frames = nFrames;
-    payload.fps = fps;
-    payload.colormap = document.getElementById('sliceCmap').value;
-    payload.vmin = numOrNull('sliceVMin');
-    payload.vmax = numOrNull('sliceVMax');
-    const resp = await fetch('/api/download/slice/gif', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error); }
-    const blob = await resp.blob();
-    const fname = resp.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || 'slice_animation.gif';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fname;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    hideLoader();
-  } catch(e) { hideLoader(); alert('Download error: ' + e.message); }
-}
-
-async function downloadBoundaryGIF() {
-  const oid = document.getElementById('bndfSelect').value;
-  if (!oid) return alert('Select an obstruction first');
-
-  const nFrames = parseInt(document.getElementById('bndfAnimFrames').value) || 20;
-  const fps = parseInt(document.getElementById('bndfAnimFPS').value) || 4;
-
-  showLoader(`Generating boundary GIF (${nFrames} frames)...`);
-  try {
-    const payload = _bndfPayload();
-    payload.time_start = numOrNull('bndfAnimTStart') || 0;
-    payload.time_end = numOrNull('bndfAnimTEnd');
-    payload.n_frames = nFrames;
-    payload.fps = fps;
-    payload.colormap = document.getElementById('bndfCmap').value;
-    payload.vmin = numOrNull('bndfVMin');
-    payload.vmax = numOrNull('bndfVMax');
-    const resp = await fetch('/api/download/boundary/gif', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error); }
-    const blob = await resp.blob();
-    const fname = resp.headers.get('Content-Disposition')?.match(/filename="?(.+?)"?$/)?.[1] || 'boundary_animation.gif';
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fname;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    hideLoader();
-  } catch(e) { hideLoader(); alert('Download error: ' + e.message); }
-}
-
-// ─── KEYBOARD SHORTCUTS ─────────────────────────────────────
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.activeElement.id === 'simPath') loadSimulation();
-  if (animFrames.length && e.key === ' ') { e.preventDefault(); animType === 'slice' ? togglePlayback() : toggleBndfPlayback(); }
-  if (animFrames.length && e.key === 'ArrowRight') { animIdx = Math.min(animIdx+1, animFrames.length-1); renderFrame(animIdx); }
-  if (animFrames.length && e.key === 'ArrowLeft') { animIdx = Math.max(animIdx-1, 0); renderFrame(animIdx); }
-});
