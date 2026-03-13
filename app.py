@@ -564,58 +564,6 @@ def api_plot3d_render():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/plot3d/render_multi", methods=["POST"])
-def api_plot3d_render_multi():
-    d = request.get_json()
-    path = d.get("path") or session.get("sim_path")
-    if not path:
-        return jsonify({"error": "No simulation loaded"}), 400
-    try:
-        sim = fds_utils.load_simulation(path)
-        result = fds_utils.render_plot3d_multi(
-            sim,
-            p3d_index=d.get("p3d_index", 0),
-            quantity_idx=d.get("quantity_idx", 0),
-            timesteps=d.get("timesteps", [0, 1]),
-            axis=d.get("axis", "z"),
-            position=d.get("position"),
-            vmin=d.get("vmin"),
-            vmax=d.get("vmax"),
-            cmap=d.get("cmap", "jet"),
-        )
-        return jsonify(result)
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/plot3d/animation_frames", methods=["POST"])
-def api_plot3d_animation_frames():
-    d = request.get_json()
-    path = d.get("path") or session.get("sim_path")
-    if not path:
-        return jsonify({"error": "No simulation loaded"}), 400
-    try:
-        sim = fds_utils.load_simulation(path)
-        frames = fds_utils.render_plot3d_animation_frames(
-            sim,
-            p3d_index=d.get("p3d_index", 0),
-            quantity_idx=d.get("quantity_idx", 0),
-            t_start=d.get("t_start", 0),
-            t_end=d.get("t_end"),
-            n_frames=d.get("n_frames", 20),
-            axis=d.get("axis", "z"),
-            position=d.get("position"),
-            vmin=d.get("vmin"),
-            vmax=d.get("vmax"),
-            cmap=d.get("cmap", "jet"),
-        )
-        return jsonify({"frames": frames})
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
 #  SMOKE3D API
 
 @app.route("/api/smoke3d", methods=["GET"])
@@ -651,56 +599,6 @@ def api_smoke3d_render():
             show_colorbar=d.get("show_colorbar", True),
         )
         return jsonify(result)
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/smoke3d/render_multi", methods=["POST"])
-def api_smoke3d_render_multi():
-    d = request.get_json()
-    path = d.get("path") or session.get("sim_path")
-    if not path:
-        return jsonify({"error": "No simulation loaded"}), 400
-    try:
-        sim = fds_utils.load_simulation(path)
-        result = fds_utils.render_smoke3d_multi(
-            sim,
-            smoke_index=d.get("smoke_index", 0),
-            timesteps=d.get("timesteps", [0, 1]),
-            axis=d.get("axis", "z"),
-            position=d.get("position"),
-            vmin=d.get("vmin"),
-            vmax=d.get("vmax"),
-            cmap=d.get("cmap", "hot"),
-        )
-        return jsonify(result)
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/smoke3d/animation_frames", methods=["POST"])
-def api_smoke3d_animation_frames():
-    d = request.get_json()
-    path = d.get("path") or session.get("sim_path")
-    if not path:
-        return jsonify({"error": "No simulation loaded"}), 400
-    try:
-        sim = fds_utils.load_simulation(path)
-        frames = fds_utils.render_smoke3d_animation_frames(
-            sim,
-            smoke_index=d.get("smoke_index", 0),
-            t_start=d.get("t_start", 0),
-            t_end=d.get("t_end"),
-            n_frames=d.get("n_frames", 20),
-            axis=d.get("axis", "z"),
-            position=d.get("position"),
-            vmin=d.get("vmin"),
-            vmax=d.get("vmax"),
-            cmap=d.get("cmap", "hot"),
-        )
-        return jsonify({"frames": frames})
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
