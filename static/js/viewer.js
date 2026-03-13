@@ -990,7 +990,7 @@ function onP3dSelected() {
       qtySel.appendChild(opt);
     });
   }
-  // Populate timestep dropdown
+  // Populate single timestep dropdown
   const tSel = document.getElementById('p3dTime');
   if (tSel) {
     tSel.innerHTML = '';
@@ -1000,29 +1000,131 @@ function onP3dSelected() {
       tSel.appendChild(opt);
     });
   }
+  // Populate multi-select timestep dropdown
+  const tMultiSel = document.getElementById('p3dTimeMulti');
+  if (tMultiSel) {
+    tMultiSel.innerHTML = '';
+    p.times.forEach((t, ti) => {
+      const opt = document.createElement('option');
+      opt.value = ti; opt.textContent = `t = ${t.toFixed(1)} s`;
+      tMultiSel.appendChild(opt);
+    });
+  }
+}
+
+function onP3dViewModeChange() {
+  const mode = document.getElementById('p3dViewMode')?.value || 'single';
+  document.getElementById('p3dSinglePanel')?.classList.toggle('d-none', mode !== 'single');
+  document.getElementById('p3dMultiPanel')?.classList.toggle('d-none', mode !== 'multi');
+  document.getElementById('p3dAnimPanel')?.classList.toggle('d-none', mode !== 'animation');
+
+  // Populate multi-select if empty
+  if (mode === 'multi' && plot3dMeta.length > 0) {
+    const p = plot3dMeta[parseInt(document.getElementById('p3dSelect').value)];
+    if (p) {
+      const sel = document.getElementById('p3dTimeMulti');
+      if (sel.options.length === 0) {
+        p.times.forEach((t, ti) => {
+          const opt = document.createElement('option');
+          opt.value = ti; opt.textContent = `t = ${t.toFixed(1)} s`;
+          sel.appendChild(opt);
+        });
+      }
+    }
+  }
+}
+
+function p3dSelectAllTimes() {
+  const sel = document.getElementById('p3dTimeMulti');
+  for (let i = 0; i < sel.options.length; i++) sel.options[i].selected = true;
+}
+
+function p3dClearTimes() {
+  const sel = document.getElementById('p3dTimeMulti');
+  for (let i = 0; i < sel.options.length; i++) sel.options[i].selected = false;
 }
 
 async function renderPlot3D() {
   const idx = parseInt(document.getElementById('p3dSelect').value);
   if (isNaN(idx)) return alert('Select a Plot3D dataset first');
-  showLoading('Rendering Plot3D cut-plane...');
-  try {
-    const posVal = document.getElementById('p3dPos').value;
-    const data = await apiPost('/api/plot3d/render', {
-      path: SIM_PATH,
-      p3d_index: idx,
-      time_idx: parseInt(document.getElementById('p3dTime').value) || 0,
-      quantity_idx: parseInt(document.getElementById('p3dQty').value) || 0,
-      axis: document.getElementById('p3dAxis').value,
-      position: posVal !== '' ? parseFloat(posVal) : null,
-      cmap: document.getElementById('p3dCmap').value,
-      vmin: numOrNull('p3dVMin'),
-      vmax: numOrNull('p3dVMax'),
-      show_colorbar: true,
-    });
-    showPlot(data.image_b64, 'Plot3D Cut-Plane');
-    hideLoading();
-  } catch (e) { hideLoading(); alert(e.message); }
+  const mode = document.getElementById('p3dViewMode')?.value || 'single';
+
+  if (mode === 'single') {
+    showLoading('Rendering Plot3D cut-plane...');
+    try {
+      const posVal = document.getElementById('p3dPos').value;
+      const data = await apiPost('/api/plot3d/render', {
+        path: SIM_PATH,
+        p3d_index: idx,
+        time_idx: parseInt(document.getElementById('p3dTime').value) || 0,
+        quantity_idx: parseInt(document.getElementById('p3dQty').value) || 0,
+        axis: document.getElementById('p3dAxis').value,
+        position: posVal !== '' ? parseFloat(posVal) : null,
+        cmap: document.getElementById('p3dCmap').value,
+        vmin: numOrNull('p3dVMin'),
+        vmax: numOrNull('p3dVMax'),
+        show_colorbar: true,
+      });
+      showPlot(data.image_b64, 'Plot3D Cut-Plane');
+      hideLoading();
+    } catch (e) { hideLoading(); alert(e.message); }
+  } else if (mode === 'multi') {
+    const sel = document.getElementById('p3dTimeMulti');
+    const times = Array.from(sel.selectedOptions).map(o => parseInt(o.value));
+    if (times.length < 2) return alert('Select at least 2 timesteps');
+    showLoading('Generating Plot3D multi-time grid...');
+    try {
+      const posVal = document.getElementById('p3dPos').value;
+      const data = await apiPost('/api/plot3d/render_multi', {
+        path: SIM_PATH,
+        p3d_index: idx,
+        timesteps: times,
+        quantity_idx: parseInt(document.getElementById('p3dQty').value) || 0,
+        axis: document.getElementById('p3dAxis').value,
+        position: posVal !== '' ? parseFloat(posVal) : null,
+        cmap: document.getElementById('p3dCmap').value,
+        vmin: numOrNull('p3dVMin'),
+        vmax: numOrNull('p3dVMax'),
+      });
+      showPlot(data.image_b64, `Plot3D Multi-Time (${times.length} frames)`);
+      hideLoading();
+    } catch (e) { hideLoading(); alert(e.message); }
+  } else if (mode === 'animation') {
+    showLoading('Generating Plot3D animation...');
+    try {
+      const posVal = document.getElementById('p3dPos').value;
+      const data = await apiPost('/api/plot3d/animation_frames', {
+        path: SIM_PATH,
+        p3d_index: idx,
+        quantity_idx: parseInt(document.getElementById('p3dQty').value) || 0,
+        t_start: numOrNull('p3dAnimTStart') || 0,
+        t_end: numOrNull('p3dAnimTEnd'),
+        n_frames: parseInt(document.getElementById('p3dAnimFrames').value) || 20,
+        axis: document.getElementById('p3dAxis').value,
+        position: posVal !== '' ? parseFloat(posVal) : null,
+        cmap: document.getElementById('p3dCmap').value,
+        vmin: numOrNull('p3dVMin'),
+        vmax: numOrNull('p3dVMax'),
+      });
+      animFrames = data.frames;
+      animIdx = 0;
+      hideLoading();
+      const pc = document.getElementById('p3dAnimPlayControls');
+      if (pc) pc.classList.remove('d-none');
+      const scrubber = document.getElementById('p3dAnimScrubber');
+      if (scrubber) { scrubber.max = animFrames.length - 1; scrubber.value = 0; }
+      _showP3dAnimFrame(0);
+    } catch (e) { hideLoading(); alert(e.message); }
+  }
+}
+
+function _showP3dAnimFrame(i) {
+  if (!animFrames[i]) return;
+  showPlot(animFrames[i].image_b64, `Frame ${i + 1}/${animFrames.length} | t = ${animFrames[i].time.toFixed(1)} s`);
+  const label = document.getElementById('p3dAnimTimeLabel');
+  if (label) label.textContent = `t = ${animFrames[i].time.toFixed(1)} s  [${i + 1}/${animFrames.length}]`;
+  const scrubber = document.getElementById('p3dAnimScrubber');
+  if (scrubber) scrubber.value = i;
 }
 
 
@@ -1049,16 +1151,116 @@ async function fetchSmoke3DList() {
   } catch (e) { console.error('Smoke3D load error:', e); }
 }
 
-function onS3dSelected() {
-  const idx = parseInt(document.getElementById('s3dSelect').value);
-  if (isNaN(idx)) return;
-  const s = smoke3dMeta[idx];
-  const info = document.getElementById('s3dInfoBox');
-  if (info) {
-    info.classList.remove('d-none');
-    info.innerHTML = `<strong>${s.quantity}</strong> (${s.unit})<br>Timesteps: ${s.n_timesteps} | Meshes: ${s.n_meshes}`;
+function onS3dViewModeChange() {
+  const mode = document.getElementById('s3dViewMode')?.value || 'single';
+  document.getElementById('s3dSinglePanel')?.classList.toggle('d-none', mode !== 'single');
+  document.getElementById('s3dMultiPanel')?.classList.toggle('d-none', mode !== 'multi');
+  document.getElementById('s3dAnimPanel')?.classList.toggle('d-none', mode !== 'animation');
+
+  // Populate multi-select if empty
+  if (mode === 'multi' && smoke3dMeta.length > 0) {
+    const s = smoke3dMeta[parseInt(document.getElementById('s3dSelect').value)];
+    if (s) {
+      const sel = document.getElementById('s3dTimeIdxMulti');
+      if (sel.options.length === 0) {
+        for (let ti = 0; ti < s.n_timesteps; ti++) {
+          const opt = document.createElement('option');
+          opt.value = ti; opt.textContent = `t[${ti}] = ${s.times[ti]?.toFixed(1) || '?'} s`;
+          sel.appendChild(opt);
+        }
+      }
+    }
   }
-  document.getElementById('s3dTimeIdx').max = s.n_timesteps - 1;
+}
+
+function s3dSelectAllTimes() {
+  const sel = document.getElementById('s3dTimeIdxMulti');
+  for (let i = 0; i < sel.options.length; i++) sel.options[i].selected = true;
+}
+
+function s3dClearTimes() {
+  const sel = document.getElementById('s3dTimeIdxMulti');
+  for (let i = 0; i < sel.options.length; i++) sel.options[i].selected = false;
+}
+
+async function renderSmoke3D() {
+  const idx = parseInt(document.getElementById('s3dSelect').value);
+  if (isNaN(idx)) return alert('Select a Smoke3D dataset first');
+  const mode = document.getElementById('s3dViewMode')?.value || 'single';
+
+  if (mode === 'single') {
+    showLoading('Rendering Smoke3D cut-plane...');
+    try {
+      const posVal = document.getElementById('s3dPos').value;
+      const data = await apiPost('/api/smoke3d/render', {
+        path: SIM_PATH,
+        smoke_index: idx,
+        time_idx: parseInt(document.getElementById('s3dTimeIdx').value) || 0,
+        axis: document.getElementById('s3dAxis').value,
+        position: posVal !== '' ? parseFloat(posVal) : null,
+        cmap: document.getElementById('s3dCmap').value,
+        vmin: numOrNull('s3dVMin'),
+        vmax: numOrNull('s3dVMax'),
+        show_colorbar: true,
+      });
+      showPlot(data.image_b64, 'Smoke3D Cut-Plane');
+      hideLoading();
+    } catch (e) { hideLoading(); alert(e.message); }
+  } else if (mode === 'multi') {
+    const sel = document.getElementById('s3dTimeIdxMulti');
+    const times = Array.from(sel.selectedOptions).map(o => parseInt(o.value));
+    if (times.length < 2) return alert('Select at least 2 timesteps');
+    showLoading('Generating Smoke3D multi-time grid...');
+    try {
+      const posVal = document.getElementById('s3dPos').value;
+      const data = await apiPost('/api/smoke3d/render_multi', {
+        path: SIM_PATH,
+        smoke_index: idx,
+        timesteps: times,
+        axis: document.getElementById('s3dAxis').value,
+        position: posVal !== '' ? parseFloat(posVal) : null,
+        cmap: document.getElementById('s3dCmap').value,
+        vmin: numOrNull('s3dVMin'),
+        vmax: numOrNull('s3dVMax'),
+      });
+      showPlot(data.image_b64, `Smoke3D Multi-Time (${times.length} frames)`);
+      hideLoading();
+    } catch (e) { hideLoading(); alert(e.message); }
+  } else if (mode === 'animation') {
+    showLoading('Generating Smoke3D animation...');
+    try {
+      const posVal = document.getElementById('s3dPos').value;
+      const data = await apiPost('/api/smoke3d/animation_frames', {
+        path: SIM_PATH,
+        smoke_index: idx,
+        t_start: numOrNull('s3dAnimTStart') || 0,
+        t_end: numOrNull('s3dAnimTEnd'),
+        n_frames: parseInt(document.getElementById('s3dAnimFrames').value) || 20,
+        axis: document.getElementById('s3dAxis').value,
+        position: posVal !== '' ? parseFloat(posVal) : null,
+        cmap: document.getElementById('s3dCmap').value,
+        vmin: numOrNull('s3dVMin'),
+        vmax: numOrNull('s3dVMax'),
+      });
+      animFrames = data.frames;
+      animIdx = 0;
+      hideLoading();
+      const pc = document.getElementById('s3dAnimPlayControls');
+      if (pc) pc.classList.remove('d-none');
+      const scrubber = document.getElementById('s3dAnimScrubber');
+      if (scrubber) { scrubber.max = animFrames.length - 1; scrubber.value = 0; }
+      _showS3dAnimFrame(0);
+    } catch (e) { hideLoading(); alert(e.message); }
+  }
+}
+
+function _showS3dAnimFrame(i) {
+  if (!animFrames[i]) return;
+  showPlot(animFrames[i].image_b64, `Frame ${i + 1}/${animFrames.length} | t = ${animFrames[i].time.toFixed(1)} s`);
+  const label = document.getElementById('s3dAnimTimeLabel');
+  if (label) label.textContent = `t = ${animFrames[i].time.toFixed(1)} s  [${i + 1}/${animFrames.length}]`;
+  const scrubber = document.getElementById('s3dAnimScrubber');
+  if (scrubber) scrubber.value = i;
 }
 
 async function renderSmoke3D() {
