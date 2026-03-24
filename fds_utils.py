@@ -1184,20 +1184,12 @@ def get_smoke3d_metadata(sim: fdsreader.Simulation) -> list[dict]:
     return result
 
 
-def render_smoke3d_cutplane(
-    sim: fdsreader.Simulation,
-    smoke_index: int = 0,
-    time_idx: int = 0,
-    axis: str = "z",
-    position: Optional[float] = None,
-    vmin: Optional[float] = None,
-    vmax: Optional[float] = None,
-    cmap: str = "hot",
-    show_colorbar: bool = True,
-) -> dict:
-    """Render a 2D cut-plane through Smoke3D data."""
-    _apply_dark_style()
-    smoke = sim.smoke_3d[smoke_index]
+def _smoke3d_volume_and_coords(smoke) -> tuple:
+    """Extract volumetric data and coordinate dict from a Smoke3D object.
+
+    Returns (vol, coords) where vol has shape (n_times, nx, ny, nz) and
+    coords is a dict with 'x', 'y', 'z' arrays (or None).
+    """
     try:
         gd = smoke.to_global(return_coordinates=True)
         if isinstance(gd, tuple) and len(gd) == 2:
@@ -1212,32 +1204,79 @@ def render_smoke3d_cutplane(
 
     if vol.ndim < 4:
         raise ValueError(f"Smoke3D data has unexpected shape: {vol.shape}")
-    frame = vol[time_idx]
+    return vol, coords
 
+
+def _smoke3d_cut(frame: np.ndarray, coords: dict | None, axis: str,
+                 position: float | None) -> tuple:
+    """Slice a 3-D frame along *axis* at *position*.
+
+    Returns (data_2d, extent, xdir, ydir, actual_position).
+    """
     axis_map = {"x": 0, "y": 1, "z": 2}
+    dir_pairs = {"x": ("y", "z"), "y": ("x", "z"), "z": ("x", "y")}
     ax_idx = axis_map.get(axis.lower(), 2)
+    xdir, ydir = dir_pairs.get(axis.lower(), ("x", "y"))
+
+    # Find slice index
     if position is not None and coords is not None:
         ax_label = axis.lower()
         if isinstance(coords, dict) and ax_label in coords:
             coord_arr = np.array(coords[ax_label])
             slice_idx = int(np.argmin(np.abs(coord_arr - position)))
+            actual_pos = float(coord_arr[slice_idx])
         else:
             slice_idx = frame.shape[ax_idx] // 2
+            actual_pos = float(slice_idx)
     else:
         slice_idx = frame.shape[ax_idx] // 2
+        if coords is not None and isinstance(coords, dict) and axis.lower() in coords:
+            actual_pos = float(np.array(coords[axis.lower()])[slice_idx])
+        else:
+            actual_pos = float(slice_idx)
 
+    # Extract 2-D plane
     if ax_idx == 0:
         data_2d = frame[slice_idx, :, :]
-        xlabel, ylabel = "y (m)", "z (m)"
     elif ax_idx == 1:
         data_2d = frame[:, slice_idx, :]
-        xlabel, ylabel = "x (m)", "z (m)"
     else:
         data_2d = frame[:, :, slice_idx]
-        xlabel, ylabel = "x (m)", "y (m)"
+
+    # Build physical extent [xmin, xmax, ymin, ymax]
+    extent: list = []
+    if coords is not None and isinstance(coords, dict):
+        xc = np.array(coords.get(xdir, []))
+        yc = np.array(coords.get(ydir, []))
+        if xc.size > 0 and yc.size > 0:
+            extent = [float(xc[0]), float(xc[-1]), float(yc[0]), float(yc[-1])]
+
+    return data_2d, extent, xdir, ydir, actual_pos
+
+
+def render_smoke3d_cutplane(
+    sim: fdsreader.Simulation,
+    smoke_index: int = 0,
+    time_idx: int = 0,
+    axis: str = "z",
+    position: Optional[float] = None,
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    cmap: str = "hot",
+    show_colorbar: bool = True,
+) -> dict:
+    """Render a 2D cut-plane through Smoke3D data."""
+    _apply_dark_style()
+    smoke = sim.smoke_3d[smoke_index]
+    vol, coords = _smoke3d_volume_and_coords(smoke)
+
+    frame = vol[time_idx]
+    data_2d, extent, xdir, ydir, actual_pos = _smoke3d_cut(frame, coords, axis, position)
 
     fig, ax = plt.subplots(figsize=(10, 7))
-    kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="auto")
+    kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="equal")
+    if extent:
+        kw["extent"] = extent
     if vmin is not None:
         kw["vmin"] = vmin
     if vmax is not None:
@@ -1252,10 +1291,241 @@ def render_smoke3d_cutplane(
         cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
         cb.set_label(f"{qname} ({qunit})", color="#d0d0e0")
         cb.ax.tick_params(colors="#8899aa")
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(f"Smoke3D: {qname} | {axis}={position or 'mid'} | t={t_val:.1f} s",
+    if extent:
+        _apply_uniform_axes(ax, extent, xdir, ydir)
+    else:
+        ax.set_xlabel(f"{xdir} (m)")
+        ax.set_ylabel(f"{ydir} (m)")
+    ax.set_title(f"Smoke3D: {qname} | {axis}={actual_pos:.2f} | t={t_val:.1f} s",
                  fontsize=14, color="#e94560")
+    return {"image_b64": fig_to_base64(fig), "actual_time": float(t_val)}
+
+
+def render_smoke3d_multi(
+    sim: fdsreader.Simulation,
+    smoke_index: int = 0,
+    timesteps_s: list[float] | None = None,
+    axis: str = "z",
+    position: Optional[float] = None,
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    cmap: str = "hot",
+) -> dict:
+    """Render a multi-timestep panel grid for Smoke3D data."""
+    _apply_dark_style()
+    smoke = sim.smoke_3d[smoke_index]
+    vol, coords = _smoke3d_volume_and_coords(smoke)
+
+    if not timesteps_s:
+        timesteps_s = [0.0]
+    n = len(timesteps_s)
+    cols = min(2, n)
+    rows = max(1, (n + cols - 1) // cols)
+    fig, axs = plt.subplots(rows, cols, figsize=(7 * cols, 6 * rows + 1.2),
+                            squeeze=False,
+                            gridspec_kw={"hspace": 0.50, "wspace": 0.40})
+
+    qname = smoke.quantity.name if hasattr(smoke.quantity, "name") else "Smoke3D"
+    qunit = smoke.quantity.unit if hasattr(smoke.quantity, "unit") else ""
+
+    # Pre-compute frames
+    frames_data: list[tuple] = []
+    for tv in timesteps_s:
+        it = int(np.argmin(np.abs(np.array(smoke.times) - tv)))
+        frame = vol[it]
+        data_2d, extent, xdir, ydir, actual_pos = _smoke3d_cut(frame, coords, axis, position)
+        data_2d = data_2d.T
+        frames_data.append((data_2d, extent, xdir, ydir, it))
+
+    g_vmin = vmin if vmin is not None else float(min(np.nanmin(fd[0]) for fd in frames_data))
+    g_vmax = vmax if vmax is not None else float(max(np.nanmax(fd[0]) for fd in frames_data))
+
+    im = None
+    for i, (d2d, ext, xd, yd, it) in enumerate(frames_data):
+        r, c = divmod(i, cols)
+        ax = axs[r][c]
+        kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="equal",
+                                  vmin=g_vmin, vmax=g_vmax)
+        if ext:
+            kw["extent"] = ext
+        im = ax.imshow(d2d, **kw)
+        ax.set_title(f"t = {smoke.times[it]:.1f} s", fontsize=11, color="#53d8fb", pad=10)
+        if ext:
+            _apply_uniform_axes(ax, ext, xd, yd)
+        else:
+            ax.set_xlabel(f"{xd} (m)")
+            ax.set_ylabel(f"{yd} (m)")
+
+    for i in range(n, rows * cols):
+        r, c = divmod(i, cols)
+        axs[r][c].set_visible(False)
+
+    fig.suptitle(f"Smoke3D: {qname} \u2014 Multi-Time Snapshots", fontsize=15,
+                 color="#e94560", y=0.98)
+    if im is not None:
+        cbar = fig.colorbar(im, ax=axs.ravel().tolist(), orientation="horizontal",
+                            fraction=0.05, pad=0.10, aspect=40)
+        cbar_label = f"{qname} ({qunit})" if qunit else qname
+        cbar.set_label(cbar_label, color="#d0d0e0", fontsize=11)
+        cbar.ax.tick_params(colors="#8899aa", labelsize=9)
+    return {"image_b64": fig_to_base64(fig, 110)}
+
+
+def render_smoke3d_animation_frames(
+    sim: fdsreader.Simulation,
+    smoke_index: int = 0,
+    t_start: float = 0.0,
+    t_end: Optional[float] = None,
+    n_frames: int = 20,
+    axis: str = "z",
+    position: Optional[float] = None,
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    cmap: str = "hot",
+) -> list[dict]:
+    """Return list of { time, image_b64 } dicts for Smoke3D animation."""
+    _apply_dark_style()
+    smoke = sim.smoke_3d[smoke_index]
+    vol, coords = _smoke3d_volume_and_coords(smoke)
+
+    times = np.array(smoke.times)
+    if t_end is None:
+        t_end = float(times[-1])
+    n_frames = min(n_frames, 60)
+
+    qname = smoke.quantity.name if hasattr(smoke.quantity, "name") else "Smoke3D"
+    qunit = smoke.quantity.unit if hasattr(smoke.quantity, "unit") else ""
+    frames: list[dict] = []
+
+    for t in np.linspace(t_start, t_end, n_frames):
+        it = int(np.argmin(np.abs(times - t)))
+        frame = vol[it]
+        data_2d, extent, xdir, ydir, actual_pos = _smoke3d_cut(frame, coords, axis, position)
+
+        fig, ax = plt.subplots(figsize=(10, 7))
+        kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="equal")
+        if extent:
+            kw["extent"] = extent
+        if vmin is not None:
+            kw["vmin"] = vmin
+        if vmax is not None:
+            kw["vmax"] = vmax
+        im = ax.imshow(data_2d.T, **kw)
+        cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
+        cb.set_label(f"{qname} ({qunit})", color="#d0d0e0")
+        cb.ax.tick_params(colors="#8899aa")
+        if extent:
+            _apply_uniform_axes(ax, extent, xdir, ydir)
+        else:
+            ax.set_xlabel(f"{xdir} (m)")
+            ax.set_ylabel(f"{ydir} (m)")
+        ax.set_title(f"Smoke3D: {qname} | {axis}={actual_pos:.2f} | t={times[it]:.1f} s",
+                     fontsize=14, color="#e94560")
+        frames.append({"time": float(times[it]), "image_b64": fig_to_base64(fig, 90)})
+    return frames
+
+
+def render_smoke3d_profile(
+    sim: fdsreader.Simulation,
+    smoke_index: int = 0,
+    time_idx: int = 0,
+    axis: str = "z",
+    position: Optional[float] = None,
+    profile_direction: str = "x",
+    profile_position: float = 0.0,
+) -> dict:
+    """Extract a 1-D profile line from a Smoke3D cut-plane."""
+    _apply_dark_style()
+    smoke = sim.smoke_3d[smoke_index]
+    vol, coords = _smoke3d_volume_and_coords(smoke)
+
+    frame = vol[time_idx]
+    data_2d, extent, xdir, ydir, actual_pos = _smoke3d_cut(frame, coords, axis, position)
+
+    qname = smoke.quantity.name if hasattr(smoke.quantity, "name") else "Smoke3D"
+    qunit = smoke.quantity.unit if hasattr(smoke.quantity, "unit") else ""
+    t_val = smoke.times[time_idx] if time_idx < len(smoke.times) else 0
+
+    # data_2d has shape (n_xdir, n_ydir) before transpose
+    if coords is not None and isinstance(coords, dict):
+        xc = np.array(coords.get(xdir, []))
+        yc = np.array(coords.get(ydir, []))
+    else:
+        xc = np.arange(data_2d.shape[0], dtype=float)
+        yc = np.arange(data_2d.shape[1], dtype=float)
+
+    if profile_direction == xdir:
+        idx = int(np.argmin(np.abs(xc - profile_position)))
+        prof = data_2d[idx, :]
+        coord = yc
+        xlabel = f"{ydir} (m)"
+    else:
+        idx = int(np.argmin(np.abs(yc - profile_position)))
+        prof = data_2d[:, idx]
+        coord = xc
+        xlabel = f"{xdir} (m)"
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(coord, prof, color="#53d8fb", lw=2)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(f"{qname} / {qunit}")
+    ax.set_title(f"Smoke3D: {qname} profile | {axis}={actual_pos:.2f}, "
+                 f"{profile_direction}={profile_position:.2f} | t={t_val:.1f} s",
+                 fontsize=14, color="#e94560")
+    ax.grid(True, alpha=0.3)
+    return {"image_b64": fig_to_base64(fig), "actual_time": float(t_val)}
+
+
+def render_smoke3d_timeseries(
+    sim: fdsreader.Simulation,
+    smoke_index: int = 0,
+    axis: str = "z",
+    position: Optional[float] = None,
+    point: dict[str, float] | None = None,
+) -> dict:
+    """Extract and plot a time-series at a specific point in Smoke3D data."""
+    _apply_dark_style()
+    smoke = sim.smoke_3d[smoke_index]
+    vol, coords = _smoke3d_volume_and_coords(smoke)
+
+    # Determine the cut-plane directions
+    dir_pairs = {"x": ("y", "z"), "y": ("x", "z"), "z": ("x", "y")}
+    xdir, ydir = dir_pairs.get(axis.lower(), ("x", "y"))
+
+    # Build coordinate arrays
+    if coords is not None and isinstance(coords, dict):
+        xc = np.array(coords.get(xdir, []))
+        yc = np.array(coords.get(ydir, []))
+    else:
+        xc = np.arange(vol.shape[{"x": 1, "y": 2, "z": 1}.get(xdir, 1)], dtype=float)
+        yc = np.arange(vol.shape[{"x": 1, "y": 2, "z": 3}.get(ydir, 2)], dtype=float)
+
+    if point is None:
+        point = {}
+    v0 = point.get(xdir, float(xc[len(xc) // 2]) if xc.size > 0 else 0)
+    v1 = point.get(ydir, float(yc[len(yc) // 2]) if yc.size > 0 else 0)
+
+    # Extract time-series at this point across all timesteps
+    ts_values = []
+    for ti in range(vol.shape[0]):
+        frame = vol[ti]
+        data_2d, _, _, _, _ = _smoke3d_cut(frame, coords, axis, position)
+        i0 = int(np.argmin(np.abs(xc - v0))) if xc.size > 0 else 0
+        i1 = int(np.argmin(np.abs(yc - v1))) if yc.size > 0 else 0
+        i0 = min(i0, data_2d.shape[0] - 1)
+        i1 = min(i1, data_2d.shape[1] - 1)
+        ts_values.append(float(data_2d[i0, i1]))
+
+    qname = smoke.quantity.name if hasattr(smoke.quantity, "name") else "Smoke3D"
+    qunit = smoke.quantity.unit if hasattr(smoke.quantity, "unit") else ""
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(smoke.times, ts_values, color="#e94560", lw=1.5)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(f"{qname} / {qunit}")
+    ax.set_title(f"Smoke3D: {qname} at ({xdir}={v0:.2f}, {ydir}={v1:.2f})",
+                 fontsize=14, color="#e94560")
+    ax.grid(True, alpha=0.3)
     return {"image_b64": fig_to_base64(fig)}
 
 

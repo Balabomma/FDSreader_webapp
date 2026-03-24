@@ -604,6 +604,100 @@ def api_smoke3d_render():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/smoke3d/render_multi", methods=["POST"])
+def api_smoke3d_render_multi():
+    d = request.get_json()
+    path = d.get("path") or session.get("sim_path")
+    if not path:
+        return jsonify({"error": "No simulation loaded"}), 400
+    try:
+        sim = fds_utils.load_simulation(path)
+        result = fds_utils.render_smoke3d_multi(
+            sim,
+            smoke_index=d.get("smoke_index", 0),
+            timesteps_s=d.get("timesteps", []),
+            axis=d.get("axis", "z"),
+            position=d.get("position"),
+            vmin=d.get("vmin"),
+            vmax=d.get("vmax"),
+            cmap=d.get("cmap", "hot"),
+        )
+        return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/smoke3d/animation_frames", methods=["POST"])
+def api_smoke3d_animation_frames():
+    d = request.get_json()
+    path = d.get("path") or session.get("sim_path")
+    if not path:
+        return jsonify({"error": "No simulation loaded"}), 400
+    try:
+        sim = fds_utils.load_simulation(path)
+        frames = fds_utils.render_smoke3d_animation_frames(
+            sim,
+            smoke_index=d.get("smoke_index", 0),
+            t_start=d.get("t_start", 0),
+            t_end=d.get("t_end"),
+            n_frames=d.get("n_frames", 20),
+            axis=d.get("axis", "z"),
+            position=d.get("position"),
+            vmin=d.get("vmin"),
+            vmax=d.get("vmax"),
+            cmap=d.get("cmap", "hot"),
+        )
+        return jsonify({"frames": frames})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/smoke3d/profile", methods=["POST"])
+def api_smoke3d_profile():
+    d = request.get_json()
+    path = d.get("path") or session.get("sim_path")
+    if not path:
+        return jsonify({"error": "No simulation loaded"}), 400
+    try:
+        sim = fds_utils.load_simulation(path)
+        result = fds_utils.render_smoke3d_profile(
+            sim,
+            smoke_index=d.get("smoke_index", 0),
+            time_idx=d.get("time_idx", 0),
+            axis=d.get("axis", "z"),
+            position=d.get("position"),
+            profile_direction=d.get("profile_direction", "x"),
+            profile_position=d.get("profile_position", 0.0),
+        )
+        return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/smoke3d/timeseries", methods=["POST"])
+def api_smoke3d_timeseries():
+    d = request.get_json()
+    path = d.get("path") or session.get("sim_path")
+    if not path:
+        return jsonify({"error": "No simulation loaded"}), 400
+    try:
+        sim = fds_utils.load_simulation(path)
+        result = fds_utils.render_smoke3d_timeseries(
+            sim,
+            smoke_index=d.get("smoke_index", 0),
+            axis=d.get("axis", "z"),
+            position=d.get("position"),
+            point=d.get("point", {}),
+        )
+        return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 #  PARTICLE API
 
 @app.route("/api/particles", methods=["GET"])

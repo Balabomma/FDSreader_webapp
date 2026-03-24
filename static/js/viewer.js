@@ -1031,6 +1031,9 @@ async function renderPlot3D() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 let smoke3dMeta = [];
+let s3dAnimFrames = [];
+let s3dAnimIdx = 0;
+let s3dAnimTimer = null;
 
 async function fetchSmoke3DList() {
   if (!SIM_PATH) return;
@@ -1049,6 +1052,18 @@ async function fetchSmoke3DList() {
   } catch (e) { console.error('Smoke3D load error:', e); }
 }
 
+function _populateS3dTimesteps(selectId, times) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '';
+  times.forEach((t, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${i}: t = ${t.toFixed(1)} s`;
+    sel.appendChild(opt);
+  });
+}
+
 function onS3dSelected() {
   const idx = parseInt(document.getElementById('s3dSelect').value);
   if (isNaN(idx)) return;
@@ -1058,27 +1073,190 @@ function onS3dSelected() {
     info.classList.remove('d-none');
     info.innerHTML = `<strong>${s.quantity}</strong> (${s.unit})<br>Timesteps: ${s.n_timesteps} | Meshes: ${s.n_meshes}`;
   }
-  document.getElementById('s3dTimeIdx').max = s.n_timesteps - 1;
+  // Populate timestep selectors
+  _populateS3dTimesteps('s3dTsSelect', s.times);
+  _populateS3dTimesteps('s3dProfTsSelect', s.times);
+  // Multi-timestep selector
+  const multiSel = document.getElementById('s3dMultiTsSelect');
+  if (multiSel) {
+    multiSel.innerHTML = '';
+    s.times.forEach((t, i) => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = `${i}: t = ${t.toFixed(1)} s`;
+      multiSel.appendChild(opt);
+    });
+  }
+  // Update profile direction labels based on axis
+  _updateS3dProfileDirs();
 }
 
+function _updateS3dProfileDirs() {
+  const axis = (document.getElementById('s3dAxis')?.value || 'z').toLowerCase();
+  const dirPairs = { x: ['y', 'z'], y: ['x', 'z'], z: ['x', 'y'] };
+  const [d1, d2] = dirPairs[axis] || ['x', 'y'];
+  const profDir = document.getElementById('s3dProfDir');
+  if (profDir) {
+    profDir.innerHTML = `<option value="${d1}">${d1.toUpperCase()}</option><option value="${d2}">${d2.toUpperCase()}</option>`;
+  }
+  // Update time-series labels
+  const l1 = document.getElementById('s3dTsPtLabel1');
+  const l2 = document.getElementById('s3dTsPtLabel2');
+  if (l1) l1.textContent = `${d1} (m)`;
+  if (l2) l2.textContent = `${d2} (m)`;
+}
+
+function onS3dViewModeChange() {
+  const mode = document.getElementById('s3dViewMode')?.value || 'single';
+  const panels = ['s3dPanelSingle', 's3dPanelMulti', 's3dPanelAnimation', 's3dPanelProfile', 's3dPanelTimeseries'];
+  panels.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('d-none');
+  });
+  const target = {
+    single: 's3dPanelSingle', multi: 's3dPanelMulti', animation: 's3dPanelAnimation',
+    profile: 's3dPanelProfile', timeseries: 's3dPanelTimeseries'
+  }[mode];
+  if (target) document.getElementById(target)?.classList.remove('d-none');
+  _updateS3dProfileDirs();
+}
+
+function _s3dCommonPayload() {
+  const idx = parseInt(document.getElementById('s3dSelect').value);
+  const posVal = document.getElementById('s3dPos').value;
+  return {
+    path: SIM_PATH,
+    smoke_index: idx,
+    axis: document.getElementById('s3dAxis').value,
+    position: posVal !== '' ? parseFloat(posVal) : null,
+  };
+}
+
+// ── Single Cut-Plane ──
 async function renderSmoke3D() {
   const idx = parseInt(document.getElementById('s3dSelect').value);
   if (isNaN(idx)) return alert('Select a Smoke3D dataset first');
   showLoading('Rendering Smoke3D cut-plane...');
   try {
-    const posVal = document.getElementById('s3dPos').value;
-    const data = await apiPost('/api/smoke3d/render', {
-      path: SIM_PATH,
-      smoke_index: idx,
-      time_idx: parseInt(document.getElementById('s3dTimeIdx').value) || 0,
-      axis: document.getElementById('s3dAxis').value,
-      position: posVal !== '' ? parseFloat(posVal) : null,
-      cmap: document.getElementById('s3dCmap').value,
-      vmin: numOrNull('s3dVMin'),
-      vmax: numOrNull('s3dVMax'),
-      show_colorbar: true,
-    });
+    const payload = _s3dCommonPayload();
+    payload.time_idx = parseInt(document.getElementById('s3dTsSelect').value) || 0;
+    payload.cmap = document.getElementById('s3dCmap').value;
+    payload.vmin = numOrNull('s3dVMin');
+    payload.vmax = numOrNull('s3dVMax');
+    payload.show_colorbar = true;
+    const data = await apiPost('/api/smoke3d/render', payload);
     showPlot(data.image_b64, 'Smoke3D Cut-Plane');
+    hideLoading();
+  } catch (e) { hideLoading(); alert(e.message); }
+}
+
+// ── Multi Timestep Grid ──
+async function renderSmoke3DMulti() {
+  const idx = parseInt(document.getElementById('s3dSelect').value);
+  if (isNaN(idx)) return alert('Select a Smoke3D dataset first');
+  const sel = document.getElementById('s3dMultiTsSelect');
+  const times = Array.from(sel.selectedOptions).map(o => parseFloat(o.value));
+  if (times.length === 0) return alert('Select at least one timestep');
+  showLoading('Generating multi-time grid...');
+  try {
+    const payload = _s3dCommonPayload();
+    payload.timesteps = times;
+    payload.cmap = document.getElementById('s3dMultiCmap').value;
+    payload.vmin = numOrNull('s3dMultiVMin');
+    payload.vmax = numOrNull('s3dMultiVMax');
+    const data = await apiPost('/api/smoke3d/render_multi', payload);
+    showPlot(data.image_b64, `Smoke3D — ${times.length} timesteps`);
+    hideLoading();
+  } catch (e) { hideLoading(); alert(e.message); }
+}
+
+// ── Animation ──
+async function renderSmoke3DAnimation() {
+  const idx = parseInt(document.getElementById('s3dSelect').value);
+  if (isNaN(idx)) return alert('Select a Smoke3D dataset first');
+  showLoading('Generating animation frames...');
+  try {
+    const payload = _s3dCommonPayload();
+    payload.t_start = parseFloat(document.getElementById('s3dAnimTStart').value) || 0;
+    const tEnd = document.getElementById('s3dAnimTEnd').value;
+    payload.t_end = tEnd !== '' ? parseFloat(tEnd) : null;
+    payload.n_frames = parseInt(document.getElementById('s3dAnimFrames').value) || 20;
+    payload.cmap = document.getElementById('s3dAnimCmap').value;
+    payload.vmin = numOrNull('s3dAnimVMin');
+    payload.vmax = numOrNull('s3dAnimVMax');
+    const data = await apiPost('/api/smoke3d/animation_frames', payload);
+    s3dAnimFrames = data.frames;
+    s3dAnimIdx = 0;
+    hideLoading();
+    document.getElementById('s3dAnimControls')?.classList.remove('d-none');
+    const slider = document.getElementById('s3dAnimSlider');
+    if (slider) { slider.max = s3dAnimFrames.length - 1; slider.value = 0; }
+    _s3dAnimShowFrame(0);
+  } catch (e) { hideLoading(); alert(e.message); }
+}
+
+function _s3dAnimShowFrame(i) {
+  if (i < 0 || i >= s3dAnimFrames.length) return;
+  s3dAnimIdx = i;
+  const f = s3dAnimFrames[i];
+  showPlot(f.image_b64, `t = ${f.time.toFixed(1)} s`);
+  const slider = document.getElementById('s3dAnimSlider');
+  if (slider) slider.value = i;
+  const status = document.getElementById('s3dAnimStatus');
+  if (status) status.textContent = `Frame ${i + 1} / ${s3dAnimFrames.length} | t = ${f.time.toFixed(1)} s`;
+}
+
+function s3dAnimPrev() { _s3dAnimShowFrame(Math.max(0, s3dAnimIdx - 1)); }
+function s3dAnimNext() { _s3dAnimShowFrame(Math.min(s3dAnimFrames.length - 1, s3dAnimIdx + 1)); }
+function s3dAnimSeek(val) { _s3dAnimShowFrame(parseInt(val)); }
+
+function s3dAnimTogglePlay() {
+  const btn = document.getElementById('s3dAnimPlayBtn');
+  if (s3dAnimTimer) {
+    clearInterval(s3dAnimTimer);
+    s3dAnimTimer = null;
+    if (btn) btn.innerHTML = '<i class="bi bi-play"></i>';
+  } else {
+    if (btn) btn.innerHTML = '<i class="bi bi-pause"></i>';
+    s3dAnimTimer = setInterval(() => {
+      const next = (s3dAnimIdx + 1) % s3dAnimFrames.length;
+      _s3dAnimShowFrame(next);
+    }, 250);
+  }
+}
+
+// ── Profile ──
+async function renderSmoke3DProfile() {
+  const idx = parseInt(document.getElementById('s3dSelect').value);
+  if (isNaN(idx)) return alert('Select a Smoke3D dataset first');
+  showLoading('Extracting profile...');
+  try {
+    const payload = _s3dCommonPayload();
+    payload.time_idx = parseInt(document.getElementById('s3dProfTsSelect').value) || 0;
+    payload.profile_direction = document.getElementById('s3dProfDir').value;
+    payload.profile_position = parseFloat(document.getElementById('s3dProfPos').value) || 0;
+    const data = await apiPost('/api/smoke3d/profile', payload);
+    showPlot(data.image_b64, 'Smoke3D Profile');
+    hideLoading();
+  } catch (e) { hideLoading(); alert(e.message); }
+}
+
+// ── Time-Series ──
+async function renderSmoke3DTimeseries() {
+  const idx = parseInt(document.getElementById('s3dSelect').value);
+  if (isNaN(idx)) return alert('Select a Smoke3D dataset first');
+  const axis = (document.getElementById('s3dAxis')?.value || 'z').toLowerCase();
+  const dirPairs = { x: ['y', 'z'], y: ['x', 'z'], z: ['x', 'y'] };
+  const [d1, d2] = dirPairs[axis] || ['x', 'y'];
+  const point = {};
+  point[d1] = parseFloat(document.getElementById('s3dTsPt1').value) || 0;
+  point[d2] = parseFloat(document.getElementById('s3dTsPt2').value) || 0;
+  showLoading('Extracting time-series...');
+  try {
+    const payload = _s3dCommonPayload();
+    payload.point = point;
+    const data = await apiPost('/api/smoke3d/timeseries', payload);
+    showPlot(data.image_b64, 'Smoke3D Time-Series');
     hideLoading();
   } catch (e) { hideLoading(); alert(e.message); }
 }
@@ -1582,7 +1760,7 @@ async function downloadSmoke3DHighResPNG() {
   const posVal = document.getElementById('s3dPos').value;
   await _downloadHighResPNG('smoke3d', {
     smoke_index: idx,
-    time_idx: parseInt(document.getElementById('s3dTimeIdx').value) || 0,
+    time_idx: parseInt(document.getElementById('s3dTsSelect').value) || 0,
     axis: document.getElementById('s3dAxis').value,
     position: posVal !== '' ? parseFloat(posVal) : null,
     cmap: document.getElementById('s3dCmap').value,
