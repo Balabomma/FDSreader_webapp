@@ -44,73 +44,59 @@
             <!-- filled by JS -->
           </div>
           <hr class="border-secondary">
-          <div class="d-flex flex-wrap gap-2 justify-content-center">
-            <a href="/slices" class="btn btn-outline-info"><i class="bi bi-layers"></i> Slices</a>
-            <a href="/boundaries" class="btn btn-outline-warning"><i class="bi bi-bricks"></i> Boundaries</a>
-            <a href="/devices" class="btn btn-outline-light"><i class="bi bi-thermometer-half"></i> Devices</a>
-            <a href="/hrr" class="btn btn-outline-danger"><i class="bi bi-fire"></i> HRR</a>
-            <a href="/plot3d" class="btn btn-outline-info"><i class="bi bi-grid-3x3-gap"></i> Plot3D</a>
-            <a href="/smoke3d" class="btn btn-outline-warning"><i class="bi bi-cloud-haze2"></i> Smoke3D</a>
-            <a href="/particles" class="btn btn-outline-primary"><i class="bi bi-droplet-half"></i> Particles</a>
-            <a href="/isosurfaces" class="btn btn-outline-success"><i class="bi bi-diamond-half"></i> Isosurfaces</a>
-            <a href="/evacuation" class="btn btn-outline-warning"><i class="bi bi-person-walking"></i> Evacuation</a>
-            <a href="/performance" class="btn btn-outline-success"><i class="bi bi-speedometer2"></i> Performance</a>
+          <div class="row g-2 justify-content-center">
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/slices" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F4CA;</div><h6 class="text-info mt-1 small">SLCF Slices</h6><small class="text-secondary" style="font-size:.7rem">2D/3D slice data</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/boundaries" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F9F1;</div><h6 class="text-warning mt-1 small">BNDF Boundaries</h6><small class="text-secondary" style="font-size:.7rem">Surface data</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/devices" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F321;</div><h6 class="text-info mt-1 small">DEVC Devices</h6><small class="text-secondary" style="font-size:.7rem">Time-series sensors</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/hrr" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F525;</div><h6 class="text-danger mt-1 small">HRR Data</h6><small class="text-secondary" style="font-size:.7rem">Heat release rate</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/plot3d" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F4E6;</div><h6 class="text-info mt-1 small">Plot3D</h6><small class="text-secondary" style="font-size:.7rem">3D volume cut-planes</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/smoke3d" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F32B;</div><h6 class="text-warning mt-1 small">Smoke3D</h6><small class="text-secondary" style="font-size:.7rem">Smoke volume data</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/particles" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F4A7;</div><h6 class="text-primary mt-1 small">Particles</h6><small class="text-secondary" style="font-size:.7rem">Lagrangian tracking</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/isosurfaces" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F48E;</div><h6 class="text-success mt-1 small">Isosurfaces</h6><small class="text-secondary" style="font-size:.7rem">Iso-contour meshes</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/evacuation" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x1F6B6;</div><h6 class="text-warning mt-1 small">Evacuation</h6><small class="text-secondary" style="font-size:.7rem">Agent egress data</small></div>
+              </a>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <a href="/performance" class="card bg-dark border-secondary text-center h-100 text-decoration-none">
+                <div class="card-body p-2"><div class="fs-2">&#x23F1;</div><h6 class="text-success mt-1 small">Performance</h6><small class="text-secondary" style="font-size:.7rem">CPU & timestep data</small></div>
+              </a>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Feature grid -->
-  <div class="row g-3 mt-5 justify-content-center">
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F4CA;</div><h6 class="text-info mt-1 small">SLCF Slices</h6><small class="text-secondary" style="font-size:.7rem">2D/3D slice data</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F9F1;</div><h6 class="text-warning mt-1 small">BNDF Boundaries</h6><small class="text-secondary" style="font-size:.7rem">Surface data</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F321;</div><h6 class="text-info mt-1 small">DEVC Devices</h6><small class="text-secondary" style="font-size:.7rem">Time-series sensors</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F525;</div><h6 class="text-danger mt-1 small">HRR Data</h6><small class="text-secondary" style="font-size:.7rem">Heat release rate</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F4E6;</div><h6 class="text-info mt-1 small">Plot3D</h6><small class="text-secondary" style="font-size:.7rem">3D volume cut-planes</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F32B;</div><h6 class="text-warning mt-1 small">Smoke3D</h6><small class="text-secondary" style="font-size:.7rem">Smoke volume data</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F4A7;</div><h6 class="text-primary mt-1 small">Particles</h6><small class="text-secondary" style="font-size:.7rem">Lagrangian tracking</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F48E;</div><h6 class="text-success mt-1 small">Isosurfaces</h6><small class="text-secondary" style="font-size:.7rem">Iso-contour meshes</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x1F6B6;</div><h6 class="text-warning mt-1 small">Evacuation</h6><small class="text-secondary" style="font-size:.7rem">Agent egress data</small></div>
-      </div>
-    </div>
-    <div class="col-6 col-md-3 col-lg-2">
-      <div class="card bg-dark border-secondary text-center h-100">
-        <div class="card-body p-2"><div class="fs-2">&#x23F1;</div><h6 class="text-success mt-1 small">Performance</h6><small class="text-secondary" style="font-size:.7rem">CPU & timestep data</small></div>
       </div>
     </div>
   </div>

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import flask; import fdsreader; print\\(''Dependencies OK''\\)\")",
+      "Bash(python app.py)"
+    ]
+  }
+}
