@@ -83,11 +83,43 @@ A comprehensive Flask web application providing interactive visualization of FDS
 
 ## Installation
 
-Follow the steps below for your operating system.
+### Quick Install (one command)
+
+The fastest way to get started. Requires **Python 3.9+** and **Git** pre-installed.
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/Balabomma/FDSreader_webapp/master/install.sh | bash
+```
+
+**Windows (Command Prompt or PowerShell):**
+```cmd
+curl -fsSL https://raw.githubusercontent.com/Balabomma/FDSreader_webapp/master/install.bat -o install.bat && install.bat
+```
+
+This will automatically clone the repo, create a virtual environment, and install all dependencies. Once complete, run:
+
+```bash
+cd FDSreader_webapp
+# Linux/macOS:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate.bat
+
+python app.py
+```
+
+Then open **http://localhost:5000** in your browser.
 
 ---
 
-### Step 1 — Install Git
+### Manual Installation (step by step)
+
+If you prefer to install manually, or if you don't have Git/Python yet, follow the steps below.
+
+---
+
+#### Step 1 — Install Git
 
 **Linux (Ubuntu/Debian):**
 ```bash
@@ -106,7 +138,7 @@ git --version
 
 ---
 
-### Step 2 — Clone or Download the Repository
+#### Step 2 — Clone or Download the Repository
 
 **Option A — Clone with Git (recommended):**
 
@@ -124,13 +156,13 @@ cd FDSreader_webapp
 
 ---
 
-### Step 3 — Install Python or Anaconda & Create a Virtual Environment
+#### Step 3 — Install Python or Anaconda & Create a Virtual Environment
 
 Choose **either** the standard Python approach **or** the Anaconda approach.
 
 ---
 
-#### Option A — Standard Python (venv)
+##### Option A — Standard Python (venv)
 
 **Linux:**
 ```bash
@@ -158,7 +190,7 @@ venv\Scripts\activate
 
 ---
 
-#### Option B — Anaconda / Miniconda
+##### Option B — Anaconda / Miniconda
 
 Download and install:
 - **Anaconda** (full): https://www.anaconda.com/download
@@ -179,7 +211,7 @@ conda activate fdsreader
 
 ---
 
-### Step 4 — Install Dependencies
+#### Step 4 — Install Dependencies
 
 With your virtual environment **activated**, run:
 
@@ -195,7 +227,7 @@ pip install -r requirements.txt
 
 ---
 
-### Step 5 — Run the Flask App
+#### Step 5 — Run the Flask App
 
 ```bash
 python app.py
@@ -207,8 +239,9 @@ Open **http://localhost:5000** in your browser.
 
 ### Quick Reference Summary
 
-| Step | Linux | Windows |
+| Step | Linux / macOS | Windows |
 |------|-------|---------|
+| **Quick install** | `curl -fsSL .../install.sh \| bash` | `curl -fsSL .../install.bat -o install.bat && install.bat` |
 | Install Git | `sudo apt-get install git` | Download from git-scm.com |
 | Clone repo | `git clone <url>` | `git clone <url>` |
 | Install Python | `sudo apt-get install python3` | Download from python.org |
@@ -250,6 +283,8 @@ FDSReader_Webapp/
 ├── app.py                          # Flask application (all API endpoints)
 ├── fds_utils.py                    # fdsreader data access + matplotlib rendering
 ├── requirements.txt                # Python dependencies
+├── install.sh                      # One-line curl installer (Linux/macOS)
+├── install.bat                     # One-line curl installer (Windows)
 ├── README.md
 ├── LICENSE
 ├── templates/
