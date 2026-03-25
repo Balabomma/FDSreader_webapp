@@ -20,6 +20,15 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024
 
+
+def _safe_len(fn):
+    """Return len of fn() or 0 on any error."""
+    try:
+        return len(fn())
+    except Exception:
+        return 0
+
+
 #  PAGE ROUTES
 
 @app.route("/")
@@ -116,7 +125,7 @@ def api_load():
                                        if getattr(o, "has_boundary_data", False)]),
                 "n_devices": len(getattr(sim, "devices", [])),
                 "n_hrr_columns": n_hrr,
-                "n_plot3d": len(getattr(sim, "data_3d", []) or []),
+                "n_plot3d": _safe_len(lambda: sim.data_3d.times),
                 "n_smoke3d": len(getattr(sim, "smoke_3d", []) or []),
                 "n_particles": len(getattr(sim, "particles", []) or []),
                 "n_isosurfaces": len(getattr(sim, "isosurfaces", []) or []),

@@ -962,12 +962,16 @@ async function fetchPlot3DList() {
     plot3dMeta = await apiGet('/api/plot3d?path=' + encodeURIComponent(SIM_PATH));
     sel.innerHTML = '<option value="">-- Select dataset --</option>';
     plot3dMeta.forEach((p, i) => {
-      const qNames = p.quantities.map(q => q.name).join(', ');
       const opt = document.createElement('option');
       opt.value = i;
-      opt.textContent = `PL3D ${i} — ${qNames} (${p.n_timesteps} steps)`;
+      opt.textContent = `Plot3D (${p.n_timesteps} steps, ${p.quantities.length} quantities)`;
       sel.appendChild(opt);
     });
+    // Auto-select if there's exactly one collection
+    if (plot3dMeta.length === 1) {
+      sel.value = '0';
+      onP3dSelected();
+    }
   } catch (e) { console.error('Plot3D load error:', e); }
 }
 

@@ -1054,26 +1054,54 @@ def list_directory(path: str) -> dict:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_plot3d_metadata(sim: fdsreader.Simulation) -> list[dict]:
-    """Return metadata for all Plot3D data objects."""
-    result: list[dict] = []
+    """Return metadata for the Plot3D collection.
+
+    ``sim.data_3d`` is a single Plot3DCollection that always contains 5
+    Plot3D objects (one per FDS quantity).  We check whether actual data
+    exists by looking at subplots / times on the first element.
+    """
     data_3d = getattr(sim, "data_3d", None)
-    if not data_3d:
-        return result
-    for idx, p3d in enumerate(data_3d):
-        times = list(getattr(p3d, "times", []))
-        quantities = []
-        for q in getattr(p3d, "quantities", []):
+    if data_3d is None:
+        return []
+
+    # Collection-level times (shared across all quantities)
+    try:
+        times = list(data_3d.times)
+    except Exception:
+        times = []
+
+    # No timesteps → no PL3D data was written by FDS
+    if not times:
+        return []
+
+    # Collection-level quantities list
+    quantities = []
+    try:
+        for q in data_3d.quantities:
             qn = q.name if hasattr(q, "name") else str(q)
             qu = q.unit if hasattr(q, "unit") else ""
             quantities.append({"name": qn, "unit": qu})
-        result.append({
-            "index": idx,
-            "n_timesteps": len(times),
-            "times": [round(float(t), 3) for t in times],
-            "quantities": quantities,
-            "n_meshes": len(getattr(p3d, "subplots", [])),
-        })
-    return result
+    except Exception:
+        # Fallback: iterate individual Plot3D objects
+        for idx, p3d in enumerate(data_3d):
+            q = getattr(p3d, "quantity", None)
+            qn = q.name if q and hasattr(q, "name") else f"Qty {idx}"
+            qu = q.unit if q and hasattr(q, "unit") else ""
+            quantities.append({"name": qn, "unit": qu})
+
+    n_meshes = 0
+    try:
+        n_meshes = len(data_3d[0].subplots)
+    except Exception:
+        pass
+
+    return [{
+        "index": 0,
+        "n_timesteps": len(times),
+        "times": [round(float(t), 3) for t in times],
+        "quantities": quantities,
+        "n_meshes": n_meshes,
+    }]
 
 
 def render_plot3d_cutplane(
@@ -1088,26 +1116,59 @@ def render_plot3d_cutplane(
     cmap: str = "jet",
     show_colorbar: bool = True,
 ) -> dict:
-    """Render a 2D cut-plane through Plot3D volumetric data."""
+    """Render a 2D cut-plane through Plot3D volumetric data.
+
+    ``sim.data_3d`` is a Plot3DCollection where each element (indexed by
+    ``quantity_idx``) is a Plot3D for one quantity.  ``p3d_index`` is kept
+    for API compatibility but is unused — quantity selection is via
+    ``quantity_idx``.
+    """
     _apply_dark_style()
-    p3d = sim.data_3d[p3d_index]
+    p3d = sim.data_3d[quantity_idx]
+    coords = None
+    vol = None
+
+    # Check that data actually exists
+    if not p3d.subplots:
+        raise ValueError(
+            f"No Plot3D data for quantity index {quantity_idx}. "
+            "Make sure the simulation has PL3D output."
+        )
+
+    # Strategy 1: to_global merges all meshes into one array
     try:
         gd = p3d.to_global(return_coordinates=True)
         if isinstance(gd, tuple) and len(gd) == 2:
             vol, coords = gd
         else:
-            vol = p3d.to_global()
-            coords = None
+            vol = gd
     except Exception:
+        pass
+
+    # Strategy 2: to_global without coordinates
+    if vol is None or vol.size == 0:
+        try:
+            vol = p3d.to_global()
+        except Exception:
+            pass
+
+    # Strategy 3: fall back to first subplot's data (single mesh)
+    if vol is None or vol.size == 0:
         sp = p3d.subplots[0]
         vol = sp.data
         coords = sp.mesh.coordinates if hasattr(sp, "mesh") else None
 
-    # vol shape: (n_t, nx, ny, nz) or (n_t, n_quantities, nx, ny, nz)
-    if vol.ndim == 5:
-        frame = vol[time_idx, quantity_idx]
-    elif vol.ndim == 4:
+    if vol is None or vol.size == 0:
+        raise ValueError(
+            f"Plot3D data could not be loaded for quantity {quantity_idx} "
+            f"(shape: {vol.shape if vol is not None else 'None'})"
+        )
+
+    # vol shape: (n_t, nx, ny, nz) — each Plot3D has a single quantity
+    if vol.ndim == 4:
         frame = vol[time_idx]
+    elif vol.ndim == 3:
+        frame = vol
     else:
         raise ValueError(f"Unexpected Plot3D data shape: {vol.shape}")
 
@@ -1128,25 +1189,43 @@ def render_plot3d_cutplane(
     if ax_idx == 0:
         data_2d = frame[slice_idx, :, :]
         xlabel, ylabel = "y (m)", "z (m)"
+        if coords and isinstance(coords, dict):
+            extent = [coords['y'][0], coords['y'][-1], coords['z'][0], coords['z'][-1]]
+        else:
+            extent = None
     elif ax_idx == 1:
         data_2d = frame[:, slice_idx, :]
         xlabel, ylabel = "x (m)", "z (m)"
+        if coords and isinstance(coords, dict):
+            extent = [coords['x'][0], coords['x'][-1], coords['z'][0], coords['z'][-1]]
+        else:
+            extent = None
     else:
         data_2d = frame[:, :, slice_idx]
         xlabel, ylabel = "x (m)", "y (m)"
+        if coords and isinstance(coords, dict):
+            extent = [coords['x'][0], coords['x'][-1], coords['y'][0], coords['y'][-1]]
+        else:
+            extent = None
 
     fig, ax = plt.subplots(figsize=(10, 7))
     kw: dict[str, Any] = dict(origin="lower", cmap=cmap, aspect="auto")
+    if extent:
+        kw["extent"] = [float(v) for v in extent]
     if vmin is not None:
         kw["vmin"] = vmin
     if vmax is not None:
         kw["vmax"] = vmax
     im = ax.imshow(data_2d.T, **kw)
 
-    q = p3d.quantities[quantity_idx] if quantity_idx < len(p3d.quantities) else None
+    # Each Plot3D object has a single .quantity
+    q = getattr(p3d, "quantity", None)
     qname = q.name if q and hasattr(q, "name") else f"Qty {quantity_idx}"
     qunit = q.unit if q and hasattr(q, "unit") else ""
-    t_val = p3d.times[time_idx] if time_idx < len(p3d.times) else 0
+    try:
+        t_val = float(sim.data_3d.times[time_idx])
+    except Exception:
+        t_val = float(p3d.times[time_idx]) if time_idx < len(p3d.times) else 0
 
     if show_colorbar:
         cb = fig.colorbar(im, ax=ax, orientation="horizontal", pad=0.12, shrink=0.8)
