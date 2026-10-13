@@ -1,4 +1,4 @@
-# FDSReader_webapp — Web Interface for fdsreader
+# FDSReader Webapp  Web Interface for fdsreader
 
 A comprehensive Flask web application providing interactive visualization of FDS (Fire Dynamics Simulator) output data using the `fdsreader` Python module.
 
